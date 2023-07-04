@@ -60,6 +60,7 @@ impl Gost28147_89 {
         unsafe {
             self.cipher_key.copy_from_slice(&keys.array_u32);
         }
+        self.prepare_round_keys();
     }
 
     pub fn set_key_from_u8_slice(&mut self, cipher_key: &[u8]) {
