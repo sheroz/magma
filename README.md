@@ -2,7 +2,7 @@
 
 ## Symmetric Block Ciphers
 
-### Block Cipher Magma
+### Block Cipher Magma (GOST R 34.12-2015, former GOST 28147-89)
 
 Implemented and tested according:
 
