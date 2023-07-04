@@ -9,7 +9,7 @@ pub struct Gost28147_89 {
 
 impl Gost28147_89 {
 
-    const ROUND_KEY_POSITION: [usize;32] = [
+    const ROUND_KEY_POSITION: [u8;32] = [
         0, 1, 2, 3, 4, 5, 6, 7,
         0, 1, 2, 3, 4, 5, 6, 7,
         0, 1, 2, 3, 4, 5, 6, 7,
@@ -42,7 +42,7 @@ impl Gost28147_89 {
     /// sets the cipher key 
     pub fn set_key(&mut self, cipher_key: &[u32;8]) {
         for index in 0..32 {
-            let round_key_position = Gost28147_89::ROUND_KEY_POSITION[index];
+            let round_key_position = Gost28147_89::ROUND_KEY_POSITION[index] as usize;
             self.round_keys[index]= cipher_key[round_key_position];
         }
     }
