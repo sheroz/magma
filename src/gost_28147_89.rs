@@ -3,6 +3,7 @@
 // https://standartgost.ru/g/%D0%93%D0%9E%D0%A1%D0%A2_28147-89
 
 pub struct Gost28147_89 {
+    cipher_key: [u32;8],
     round_keys: [u32;32],
     substitution_box: [u8;128]
 }
@@ -28,10 +29,11 @@ impl Gost28147_89 {
     ];
 
     pub fn new() -> Gost28147_89 {
+        let cipher_key = [0u32;8];
         let round_keys= [0u32;32];
         let mut substitution_box = [0u8;128];
         substitution_box.copy_from_slice(&Gost28147_89::DEFAULT_SUBSTITUTION_BOX);
-        Gost28147_89 {round_keys, substitution_box}
+        Gost28147_89 { cipher_key, round_keys, substitution_box }
     }
 
     /// sets the s_box
@@ -41,18 +43,47 @@ impl Gost28147_89 {
 
     /// sets the cipher key 
     pub fn set_key(&mut self, cipher_key: &[u32;8]) {
-        for index in 0..32 {
-            let round_key_position = Gost28147_89::ROUND_KEY_POSITION[index] as usize;
-            self.round_keys[index]= cipher_key[round_key_position];
+        self.cipher_key.clone_from(cipher_key);
+        self.prepare_round_keys();
+    }
+
+    pub fn set_key_from_u8(&mut self, cipher_key: &[u8;32])
+    {
+        #[repr(C)]
+        union CipherKey {
+            array_u8: [u8;32],
+            array_u32: [u32;8]
+        }
+
+        let keys = CipherKey {array_u8: cipher_key.clone()};
+        
+        unsafe {
+            self.cipher_key.copy_from_slice(&keys.array_u32);
         }
     }
 
-    pub fn crypt() {
-    
+    pub fn set_key_from_u8_slice(&mut self, cipher_key: &[u8]) {
+        assert!(cipher_key.len() == 32);
+        let src_ptr = cipher_key.as_ptr() as *const u32;
+        let dst_ptr =  self.cipher_key.as_mut_ptr();
+        let count = self.cipher_key.len();
+        unsafe {std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, count)};
+        self.prepare_round_keys();
+    }
+
+    fn prepare_round_keys(&mut self) {
+        for index in 0..32 {
+            let round_key_position = Gost28147_89::ROUND_KEY_POSITION[index] as usize;
+            self.round_keys[index]= self.cipher_key[round_key_position];
+        }
+    }
+
+    pub fn encrypt(&self) -> u64 {
+        0
     }
     
-    pub fn decrypt() {
-   
+    pub fn decrypt(&self) -> u64 {
+        0
     }
 }
 
@@ -63,10 +94,47 @@ mod tests {
     #[test]
     fn initialization() {
         let gost = Gost28147_89::new();
+        assert_eq!(gost.cipher_key, [0u32;8]);
         assert_eq!(gost.round_keys, [0u32;32]);
         assert_eq!(gost.substitution_box, Gost28147_89::DEFAULT_SUBSTITUTION_BOX);
     }
-    
+
+    #[test]
+    fn set_keys() {
+
+        let cipher_key_u32: [u32;8] = [
+            0x733D2C20,
+            0x65686573,
+            0x74746769,
+            0x79676120,
+            0x626E7373,
+            0x20657369,
+            0x326C6568,
+            0x33206D54
+        ];
+
+        let cipher_key_u8: [u8;32] = [
+            0x20, 0x2C, 0x3D, 0x73,   
+            0x73, 0x65, 0x68, 0x65,   
+            0x69, 0x67, 0x74, 0x74,   
+            0x20, 0x61, 0x67, 0x79,   
+            0x73, 0x73, 0x6E, 0x62,   
+            0x69, 0x73, 0x65, 0x20,   
+            0x68, 0x65, 0x6C, 0x32,   
+            0x54, 0x6D, 0x20, 0x33  
+        ];
+
+        let mut gost = Gost28147_89::new();
+        gost.set_key(&cipher_key_u32);
+        assert_eq!(gost.cipher_key, cipher_key_u32);
+
+        gost.set_key_from_u8(&cipher_key_u8);
+        assert_eq!(gost.cipher_key, cipher_key_u32);
+
+        gost.set_key_from_u8_slice(&cipher_key_u8);
+        assert_eq!(gost.cipher_key, cipher_key_u32);
+    }
+
     #[test]
     fn distribution_round_keys() {
         let mut gost = Gost28147_89::new();
