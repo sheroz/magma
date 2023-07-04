@@ -22,7 +22,6 @@ pub enum Mode {
 }
 
 impl CryptoEngine {
-
     pub const SUBSTITUTION_BOX_RFC7836: [u8;128] = [
         0xC, 0x4, 0x6, 0x2, 0xA, 0x5, 0xB, 0x9, 0xE, 0x8, 0xD, 0x7, 0x0, 0x3, 0xF, 0x1,
         0x6, 0x8, 0x2, 0x3, 0x9, 0xA, 0x5, 0xC, 0x1, 0xE, 0x4, 0x7, 0xB, 0xD, 0x0, 0xF,
@@ -91,7 +90,6 @@ impl CryptoEngine {
     }
 
     fn prepare_round_keys(&mut self) {
-
         const ROUND_KEY_POSITION: [u8;32] = [
             0, 1, 2, 3, 4, 5, 6, 7,
             0, 1, 2, 3, 4, 5, 6, 7,
@@ -277,14 +275,14 @@ mod tests {
     }
 
     #[test]
-    fn split_plaintext_rfc8891() {
+    fn split_into_u32_rfc8891() {
         // Test vectors:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
         assert_eq!(CryptoEngine::split_into_u32(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
     }
 
     #[test]
-    fn join_plaintext_rfc8891() {
+    fn join_as_u64_rfc8891() {
         // Test vectors:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
         assert_eq!(CryptoEngine::join_as_u64(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
@@ -464,7 +462,5 @@ mod tests {
 
         gost.set_key(&k4);
         assert_eq!(gost.decrypt(s4), plaintext);
-
     }
-
 }
