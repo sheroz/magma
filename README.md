@@ -10,7 +10,11 @@
 1. Linux Ubuntu 22.04 LTS / Intel® Core™ i7
 2. MacOS Ventura 13.4 / Apple Macbook Pro M1
 
-## Block encryption sample
+## Sample usage
+
+### Please look at src/bin/sample.rs
+
+#### Block encryption sample
 
     let mut gost = magma::CryptoEngine::new();
 
@@ -34,7 +38,7 @@ Output:
     Encrypted ciphertext: 4ee901e5c2d8ca3d
     Decrypted source: fedcba9876543210
 
-## Text encryption sample
+#### Text encryption sample
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
