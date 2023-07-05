@@ -24,16 +24,10 @@ fn encrypt_block() {
 }
 
 fn encrypt_text() {
+    let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
+    Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis.";
 
-    let source_text = r#"
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-        Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis.
-        Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo.
-        Nulla in neque diam. Ut sodales, augue a iaculis bibendum, risus nisl mattis massa, in ultrices ante justo ac felis.
-        Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
-    "#;
-
-    println!("Source text:\n{}", source_text);
+    println!("Source text:\n{}\n", source_text);
 
     let source_bytes = source_text.as_bytes();
 
@@ -42,7 +36,7 @@ fn encrypt_text() {
     ];
     let mut gost = magma::CryptoEngine::new_with_key(&cipher_key);
     let encrypted = gost.encrypt_buf(source_bytes, magma::Mode::ECB);
-    println!("Encrypted ciphertext: {:x?}", encrypted);
+    println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
     let mut decrypted = gost.decrypt_buf(&encrypted, magma::Mode::ECB);
 
@@ -50,6 +44,5 @@ fn encrypt_text() {
     decrypted.truncate(source_bytes.len());
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
-    println!("Decrypted text:\n{}", decrypted_text);
-
+    println!("Decrypted text:\n{}\n", decrypted_text);
 }
