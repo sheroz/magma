@@ -1,4 +1,4 @@
-use crypto::magma;
+use magma;
 
 fn main() {
     encrypt_block();
@@ -25,7 +25,10 @@ fn encrypt_block() {
 
 fn encrypt_text() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-    Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis.";
+        Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
+        Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
+        Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. \
+        Quisque iaculis est et est volutpat posuere.";
 
     println!("Source text:\n{}\n", source_text);
 
@@ -40,7 +43,7 @@ fn encrypt_text() {
 
     let mut decrypted = gost.decrypt_buf(&encrypted, magma::Mode::ECB);
 
-    // truncate padding bytes
+    // remove padding bytes
     decrypted.truncate(source_bytes.len());
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
