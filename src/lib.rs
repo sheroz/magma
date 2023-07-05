@@ -14,7 +14,6 @@ pub struct CryptoEngine {
     substitution_box: [u8;128]
 }
 
-#[derive(Debug)]
 pub enum Mode {
     ECB, // Electronic Codebook Mode
 
