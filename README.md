@@ -1,9 +1,14 @@
 # Implementation of Magma Symmetric Block Cipher (GOST R 34.12-2015, former GOST 28147-89) in Rust
 
-## Implemented and tested according
+## Implemented according
 
 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) GOST R 34.12-2015
 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) GOST 28147-89
+
+## Tested on platforms
+
+1. Linux Ubuntu 22.04 LTS / Intel® Core™ i7
+2. MacOS Ventura 13.4 / Apple Macbook Pro M1
 
 ## Block encryption sample
 
