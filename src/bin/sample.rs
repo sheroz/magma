@@ -1,11 +1,11 @@
 use magma;
 
 fn main() {
-    encrypt_block();
-    encrypt_text(); 
+    sample_encrypt_block();
+    sample_encrypt_text(); 
 }
 
-fn encrypt_block() {
+fn sample_encrypt_block() {
     let mut gost = magma::CryptoEngine::new();
 
     let cipher_key: [u32;8] = [
@@ -23,7 +23,7 @@ fn encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
-fn encrypt_text() {
+fn sample_encrypt_text() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
         Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -48,4 +48,24 @@ fn encrypt_text() {
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn main_test() {
+        main();
+    }
+
+    #[test]
+    fn sample_encrypt_block_test() {
+        sample_encrypt_block();
+    }
+
+    #[test]
+    fn sample_encrypt_text_test() {
+        sample_encrypt_text();
+    }
 }
