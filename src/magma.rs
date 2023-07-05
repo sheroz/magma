@@ -17,9 +17,12 @@ pub struct CryptoEngine {
 #[derive(Debug)]
 pub enum Mode {
     ECB, // Electronic Codebook Mode
+
+    /*
     CTR, // Counter Encryption Mode
     CFB, // CipherFeedback Mode
     MAC, // Message Authentication Code
+    */
 }
 
 #[repr(C)]
@@ -64,6 +67,12 @@ impl CryptoEngine {
         let mut substitution_box = [0u8;128];
         substitution_box.copy_from_slice(&CryptoEngine::SUBSTITUTION_BOX_RFC7836);
         CryptoEngine { cipher_key, round_keys, substitution_box }
+    }
+
+    pub fn new_with_key(cipher_key: &[u32;8]) -> CryptoEngine {
+        let mut engine = CryptoEngine::new();
+        engine.set_key(cipher_key);
+        engine
     }
 
     /// sets the s_box
@@ -173,48 +182,52 @@ impl CryptoEngine {
         CryptoEngine::join_as_u64(b_1, b_0)
     }
 
-    pub fn encrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Result<Vec<u8>, String> {
+    pub fn encrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
         match mode {
-            Mode::ECB => Ok(self.encrypt_buf_ecb(buf)),
-            _ => Err(format!("Mode {:?} is not supported yet!", mode))
+            Mode::ECB => self.encrypt_decrypt_ecb(buf, CryptoEngine::encrypt),
+        }
+    }
+    
+    pub fn decrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
+        match mode {
+            Mode::ECB => self.encrypt_decrypt_ecb(buf, CryptoEngine::decrypt),
         }
     }
 
-    fn encrypt_buf_ecb(&mut self, src_buf: &[u8]) -> Vec<u8> {
+    fn encrypt_decrypt_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
 
-        let mut encrypted = Vec::<u8>::with_capacity(src_buf.len());
+        let mut result = Vec::<u8>::with_capacity(src_buf.len());
 
         for chunk in src_buf.chunks(8) {
             let mut m64bit = M64Bit { v: 0 };
             unsafe {
-                m64bit.array_u8.copy_from_slice(chunk);
-                m64bit.v = self.encrypt(m64bit.v);
-                encrypted.extend_from_slice(&m64bit.array_u8);
+                std::ptr::copy_nonoverlapping(chunk.as_ptr(), m64bit.array_u8.as_mut_ptr(), chunk.len());
+                m64bit.v = m_invoke(&self, m64bit.v);
+                result.extend_from_slice(&m64bit.array_u8);
             }
         }
 
-        encrypted
-    }
-    
-    pub fn decrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Result<Vec<u8>, String> {
-        match mode {
-            Mode::ECB => Ok(self.decrypt_buf_ecb(buf)),
-            _ => panic!("Mode {:?} is not supported yet!", mode)
-        }
+        result
     }
 
-    fn decrypt_buf_ecb(&mut self, buf: &[u8]) -> Vec<u8> {
-        let mut decrypted_buf = Vec::<u8>::with_capacity(buf.len());
-        decrypted_buf
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    // Test vectors RFC8891:
+    // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
+
+    const CIPHER_KEY_RFC8891: [u32;8] = [
+        0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+    ];
+
+    const PLAINTEXT_RFC8891: u64 = 0xfedcba9876543210_u64;
+    const ENCRYPTED_RFC8891: u64 = 0x4ee901e5c2d8ca3d_u64;
+
     #[test]
-    fn initialization() {
+    fn default_initialization() {
         let gost = CryptoEngine::new();
         assert_eq!(gost.cipher_key, [0u32;8]);
         assert_eq!(gost.round_keys, [0u32;32]);
@@ -222,65 +235,32 @@ mod tests {
     }
 
     #[test]
-    fn set_keys() {
-        let cipher_key_u32: [u32;8] = [
-            0x733D2C20,
-            0x65686573,
-            0x74746769,
-            0x79676120,
-            0x626E7373,
-            0x20657369,
-            0x326C6568,
-            0x33206D54
-        ];
-
+    fn set_keys_rfc8891() {
         let cipher_key_u8: [u8;32] = [
-            0x20, 0x2C, 0x3D, 0x73,   
-            0x73, 0x65, 0x68, 0x65,   
-            0x69, 0x67, 0x74, 0x74,   
-            0x20, 0x61, 0x67, 0x79,   
-            0x73, 0x73, 0x6E, 0x62,   
-            0x69, 0x73, 0x65, 0x20,   
-            0x68, 0x65, 0x6C, 0x32,   
-            0x54, 0x6D, 0x20, 0x33  
-        ];
+            0xcc, 0xdd, 0xee, 0xff,   
+            0x88, 0x99, 0xaa, 0xbb,   
+            0x44, 0x55, 0x66, 0x77,   
+            0x00, 0x11, 0x22, 0x33,   
+            0xf3, 0xf2, 0xf1, 0xf0,   
+            0xf7, 0xf6, 0xf5, 0xf4,   
+            0xfb, 0xfa, 0xf9, 0xf8,   
+            0xff, 0xfe, 0xfd, 0xfc,   
+            ];
 
-        let mut gost = CryptoEngine::new();
-        gost.set_key(&cipher_key_u32);
-        assert_eq!(gost.cipher_key, cipher_key_u32);
+        let mut gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
 
         gost.set_key_from_u8(&cipher_key_u8);
-        assert_eq!(gost.cipher_key, cipher_key_u32);
+        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
 
         gost.set_key_from_u8_slice(&cipher_key_u8);
-        assert_eq!(gost.cipher_key, cipher_key_u32);
-    }
-
-    #[test]
-    fn round_keys() {
-        let mut gost = CryptoEngine::new();
-        let cipher_key = [0x733D2C20, 0x65686573, 0x74746769, 0x79676120, 0x626E7373, 0x20657369, 0x326C6568, 0x33206D54];
-        gost.set_key(&cipher_key);
-
-        let round_keys = [
-            0x733D2C20, 0x65686573, 0x74746769, 0x79676120, 0x626E7373, 0x20657369, 0x326C6568, 0x33206D54,
-            0x733D2C20, 0x65686573, 0x74746769, 0x79676120, 0x626E7373, 0x20657369, 0x326C6568, 0x33206D54,
-            0x733D2C20, 0x65686573, 0x74746769, 0x79676120, 0x626E7373, 0x20657369, 0x326C6568, 0x33206D54,
-            0x33206D54, 0x326C6568, 0x20657369, 0x626E7373, 0x79676120, 0x74746769, 0x65686573, 0x733D2C20
-        ];
-        assert_eq!(gost.round_keys, round_keys);
+        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
     }
 
     #[test]
     fn round_keys_rfc8891() {
-        // Test vectors:
-        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
+        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
 
-        let mut gost = CryptoEngine::new();
-
-        let cipher_key: [u32;8] = [
-            0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
-        ];
         let round_keys: [u32;32]= [
             0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff,
             0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff,
@@ -288,13 +268,12 @@ mod tests {
             0xfcfdfeff, 0xf8f9fafb, 0xf4f5f6f7, 0xf0f1f2f3, 0x33221100, 0x77665544, 0xbbaa9988, 0xffeeddcc
         ];
 
-        gost.set_key(&cipher_key);
         assert_eq!(gost.round_keys, round_keys);
     }
 
     #[test]
     fn transformation_t_rfc8891() {
-        // Test vectors:
+        // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
 
         let gost = CryptoEngine::new();
@@ -307,7 +286,7 @@ mod tests {
 
     #[test]
     fn transformation_g_rfc8891() {
-        // Test vectors:
+        // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
 
         let gost = CryptoEngine::new();
@@ -320,29 +299,24 @@ mod tests {
 
     #[test]
     fn split_into_u32_rfc8891() {
-        // Test vectors:
+        // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
         assert_eq!(CryptoEngine::split_into_u32(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
     }
 
     #[test]
     fn join_as_u64_rfc8891() {
-        // Test vectors:
+        // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
         assert_eq!(CryptoEngine::join_as_u64(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
     }
 
     #[test]
     fn transformation_big_g_rfc8891() {
-        // Test vectors:
+        // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
 
-        let cipher_key: [u32;8] = [
-            0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
-        ];
-
-        let mut gost = CryptoEngine::new();
-        gost.set_key(&cipher_key);
+        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
 
         let (mut a_1, mut a_0) = (0xfedcba98_u32, 0x76543210_u32);
         let expected = [
@@ -388,36 +362,14 @@ mod tests {
 
     #[test]
     fn encrypt_rfc8891() {
-        // Test vectors:
-        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-
-        let cipher_key: [u32;8] = [
-            0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
-        ];
-
-        let mut gost = CryptoEngine::new();
-        gost.set_key(&cipher_key);
-
-        let plaintext = 0xfedcba9876543210_u64;
-        let encrypted = gost.encrypt(plaintext);
-        assert_eq!(encrypted, 0x4ee901e5c2d8ca3d_u64);
+        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(gost.encrypt(PLAINTEXT_RFC8891), ENCRYPTED_RFC8891);
     }
 
     #[test]
     fn decrypt_rfc8891() {
-        // Test vectors:
-        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-
-        let cipher_key: [u32;8] = [
-            0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
-        ];
-
-        let mut gost = CryptoEngine::new();
-        gost.set_key(&cipher_key);
-
-        let encrypted = 0x4ee901e5c2d8ca3d_u64;
-        let plaintext = gost.decrypt(encrypted);
-        assert_eq!(plaintext, 0xfedcba9876543210_u64);
+        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(gost.decrypt(ENCRYPTED_RFC8891), PLAINTEXT_RFC8891);
     }
 
     #[test]
@@ -506,5 +458,32 @@ mod tests {
 
         gost.set_key(&k4);
         assert_eq!(gost.decrypt(s4), plaintext);
+    }
+
+    #[test]
+    fn encrypt_decrypt_buf() {
+
+        let txt = r#"
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+            Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis.
+            Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo.
+            Nulla in neque diam. Ut sodales, augue a iaculis bibendum, risus nisl mattis massa, in ultrices ante justo ac felis.
+            Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
+        "#;
+
+        let txt_bytes = txt.as_bytes();
+
+        let mut gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        let encrypted = gost.encrypt_buf(txt_bytes, Mode::ECB);
+        assert!(!encrypted.is_empty());
+
+        let mut decrypted = gost.decrypt_buf(&encrypted, Mode::ECB);
+        assert!(decrypted.len() >= encrypted.len());
+
+        // truncate padding bytes
+        decrypted.truncate(txt_bytes.len());
+
+        let decrypted_text = String::from_utf8(decrypted).unwrap();
+        assert_eq!(decrypted_text, txt);
     }
 }
