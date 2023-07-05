@@ -9,7 +9,7 @@ Implemented and tested according:
 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) GOST R 34.12-2015
 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) GOST 28147-89
 
-#### Sample usage:
+#### Sample usage
 
     let mut gost = magma::CryptoEngine::new();
 
@@ -26,6 +26,12 @@ Implemented and tested according:
 
     let decrypted = gost.decrypt(encrypted);
     println!("Decrypted source: {:x}", decrypted);
+
+Output:
+
+    Source: fedcba9876543210
+    Encrypted ciphertext: 4ee901e5c2d8ca3d
+    Decrypted source: fedcba9876543210
 
 ## Asymmetric Ciphers
 
