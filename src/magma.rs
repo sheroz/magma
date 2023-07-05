@@ -143,9 +143,11 @@ impl CryptoEngine {
         // divide the input block into right and left parts
         let (mut a_1, mut a_0) = CryptoEngine::split_into_u32(plaintext);
 
-        // transform parts 
-        for round in 0..32 {
+        // transformations
+        let mut round = 0;
+        while round < 32 {
             (a_1, a_0) = self.transformation_big_g(self.round_keys[round], a_1, a_0); 
+            round += 1;
         }
 
         // join splitted parts into u64 result
@@ -155,8 +157,11 @@ impl CryptoEngine {
     pub fn decrypt(&self, ciphertext: u64) -> u64 {
         // divide the input block into right and left parts
         let (mut b_1, mut b_0) = CryptoEngine::split_into_u32(ciphertext);
-        // transform parts 
-        for round in (0..32).rev() {
+
+        // transformations
+        let mut round = 32;
+        while round != 0 {
+            round -= 1;
             (b_1, b_0) = self.transformation_big_g(self.round_keys[round], b_1, b_0);
         }
 
