@@ -1,4 +1,4 @@
-# Implementation of sample crypto algorithms in Rust
+# Implementation of crypto algorithms in Rust
 
 ## Symmetric Block Ciphers
 

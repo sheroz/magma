@@ -14,11 +14,24 @@ pub struct CryptoEngine {
     substitution_box: [u8;128]
 }
 
+#[derive(Debug)]
 pub enum Mode {
     ECB, // Electronic Codebook Mode
     CTR, // Counter Encryption Mode
     CFB, // CipherFeedback Mode
     MAC, // Message Authentication Code
+}
+
+#[repr(C)]
+union M256Bit {
+    array_u8: [u8;32],
+    array_u32: [u32;8]
+}
+
+#[repr(C)]
+union M64Bit {
+    v: u64,
+    array_u8: [u8;8]
 }
 
 impl CryptoEngine {
@@ -66,17 +79,8 @@ impl CryptoEngine {
 
     pub fn set_key_from_u8(&mut self, cipher_key: &[u8;32])
     {
-        #[repr(C)]
-        union CipherKey {
-            array_u8: [u8;32],
-            array_u32: [u32;8]
-        }
-
-        let keys = CipherKey {array_u8: cipher_key.clone()};
-        
-        unsafe {
-            self.cipher_key.copy_from_slice(&keys.array_u32);
-        }
+        let keys = M256Bit { array_u8: cipher_key.clone() };
+        self.cipher_key.copy_from_slice(unsafe{ &keys.array_u32 });
         self.prepare_round_keys();
     }
 
@@ -119,7 +123,7 @@ impl CryptoEngine {
     #[inline]
     fn transformation_g(&self, k: u32, a: u32) -> u32 {
         let res = self.transformation_t(((k as u64) + (a as u64)) as u32);
-        (res << 11) | (res >> 21)
+        res.rotate_left(11)
     }
 
     #[inline]
@@ -167,6 +171,41 @@ impl CryptoEngine {
 
         // join splitted parts into u64 result
         CryptoEngine::join_as_u64(b_1, b_0)
+    }
+
+    pub fn encrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Result<Vec<u8>, String> {
+        match mode {
+            Mode::ECB => Ok(self.encrypt_buf_ecb(buf)),
+            _ => Err(format!("Mode {:?} is not supported yet!", mode))
+        }
+    }
+
+    fn encrypt_buf_ecb(&mut self, src_buf: &[u8]) -> Vec<u8> {
+
+        let mut encrypted = Vec::<u8>::with_capacity(src_buf.len());
+
+        for chunk in src_buf.chunks(8) {
+            let mut m64bit = M64Bit { v: 0 };
+            unsafe {
+                m64bit.array_u8.copy_from_slice(chunk);
+                m64bit.v = self.encrypt(m64bit.v);
+                encrypted.extend_from_slice(&m64bit.array_u8);
+            }
+        }
+
+        encrypted
+    }
+    
+    pub fn decrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Result<Vec<u8>, String> {
+        match mode {
+            Mode::ECB => Ok(self.decrypt_buf_ecb(buf)),
+            _ => panic!("Mode {:?} is not supported yet!", mode)
+        }
+    }
+
+    fn decrypt_buf_ecb(&mut self, buf: &[u8]) -> Vec<u8> {
+        let mut decrypted_buf = Vec::<u8>::with_capacity(buf.len());
+        decrypted_buf
     }
 }
 
