@@ -181,19 +181,19 @@ impl CryptoEngine {
         CryptoEngine::join_as_u64(b_1, b_0)
     }
 
-    pub fn encrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
+    pub fn encrypt_buffer(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
         match mode {
-            Mode::ECB => self.encrypt_decrypt_ecb(buf, CryptoEngine::encrypt),
+            Mode::ECB => self.process_buffer_ecb(buf, CryptoEngine::encrypt),
         }
     }
     
-    pub fn decrypt_buf(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
+    pub fn decrypt_buffer(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
         match mode {
-            Mode::ECB => self.encrypt_decrypt_ecb(buf, CryptoEngine::decrypt),
+            Mode::ECB => self.process_buffer_ecb(buf, CryptoEngine::decrypt),
         }
     }
 
-    fn encrypt_decrypt_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
+    fn process_buffer_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
 
         let mut result = Vec::<u8>::with_capacity(src_buf.len());
 
@@ -460,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_decrypt_buf() {
+    fn encrypt_decrypt_buffer_ecb() {
 
         let txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
             Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -471,10 +471,10 @@ mod tests {
         let txt_bytes = txt.as_bytes();
 
         let mut gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = gost.encrypt_buf(txt_bytes, Mode::ECB);
+        let encrypted = gost.encrypt_buffer(txt_bytes, Mode::ECB);
         assert!(!encrypted.is_empty());
 
-        let mut decrypted = gost.decrypt_buf(&encrypted, Mode::ECB);
+        let mut decrypted = gost.decrypt_buffer(&encrypted, Mode::ECB);
         assert!(decrypted.len() >= encrypted.len());
 
         // remove padding bytes

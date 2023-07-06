@@ -38,10 +38,10 @@ fn sample_encrypt_text() {
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
     let mut gost = magma::CryptoEngine::new_with_key(&cipher_key);
-    let encrypted = gost.encrypt_buf(source_bytes, magma::Mode::ECB);
+    let encrypted = gost.encrypt_buffer(source_bytes, magma::Mode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = gost.decrypt_buf(&encrypted, magma::Mode::ECB);
+    let mut decrypted = gost.decrypt_buffer(&encrypted, magma::Mode::ECB);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());
