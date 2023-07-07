@@ -1,4 +1,4 @@
-# Implementation of block cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89) in Rust
+# Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
 
 ## Implemented according
 

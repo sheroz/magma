@@ -1,6 +1,6 @@
 [package]
 name = "cipher_magma"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["Sheroz Khaydarov"]
 description = "Block Cipher Magma (GOST R 34.12-2015, former GOST 28147-89)"

@@ -184,11 +184,9 @@ mod tests {
 
     // Test vectors RFC8891:
     // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-
     const CIPHER_KEY_RFC8891: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
-
     const PLAINTEXT_RFC8891: u64 = 0xfedcba9876543210_u64;
     const ENCRYPTED_RFC8891: u64 = 0x4ee901e5c2d8ca3d_u64;
 
@@ -348,11 +346,9 @@ mod tests {
 
     #[test]
     fn encrypt_rfc5830() {
-        // Test vectors for GOST 28147-89
-        // https://www.rfc-editor.org/rfc/rfc5831#section-7
-
         /*
-            S-Box = SUBSTITUTION_BOX_CBR
+            Test vectors for GOST 28147-89
+            https://www.rfc-editor.org/rfc/rfc5831#section-7
 
             K1 (little-endian) = 0x733D2C20 0x65686573 0x74746769 0x79676120 0x626E7373 0x20657369 0x326C6568 0x33206D54
             K1 = [0x33206D54, 0x326C6568, 0x20657369, 0x626E7373, 0x79676120, 0x74746769, 0x65686573, 0x733D2C20]    
@@ -372,6 +368,7 @@ mod tests {
             S3 = 0x8D345899 0x00FF0E28
             S4 = 0xE7860419 0x0D2A562D
         */
+
         let k1: [u32;8] = [0x33206D54, 0x326C6568, 0x20657369, 0x626E7373, 0x79676120, 0x74746769, 0x65686573, 0x733D2C20];
         let k2: [u32;8] = [0x4D393320, 0x090D326C, 0x161A2065, 0x1D00626E, 0x06417967, 0x130E7474, 0x0D166568, 0x110C733D];    
         let k3: [u32;8] = [0xF513B239, 0x3FA109F2, 0x3ABAE91A, 0x620C1DFF, 0xC7E1F941, 0x850013F1, 0x730DF216, 0x80B111F3];
@@ -381,9 +378,6 @@ mod tests {
         let s2 = 0x5203EBC85D9BCFFD_u64;
         let s3 = 0x8D34589900FF0E28_u64;
         let s4 = 0xE78604190D2A562D_u64;
-
-        let mut magma = Magma::new();
-        magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
         let plaintext = 0x0_u64;
         let mut magma = Magma::new();
