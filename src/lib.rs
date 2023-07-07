@@ -24,18 +24,6 @@ pub enum Mode {
     */
 }
 
-#[repr(C)]
-union M256Bit {
-    array_u8: [u8;32],
-    array_u32: [u32;8]
-}
-
-#[repr(C)]
-union M64Bit {
-    v: u64,
-    array_u8: [u8;8]
-}
-
 impl CryptoEngine {
     pub const SUBSTITUTION_BOX_RFC7836: [u8;128] = [
         0xC, 0x4, 0x6, 0x2, 0xA, 0x5, 0xB, 0x9, 0xE, 0x8, 0xD, 0x7, 0x0, 0x3, 0xF, 0x1,
@@ -85,19 +73,41 @@ impl CryptoEngine {
         self.prepare_round_keys();
     }
 
-    pub fn set_key_from_u8(&mut self, cipher_key: &[u8;32])
+    #[allow(dead_code)]
+    // the fastest, but platform specific, do not use!
+    fn set_key_from_array_unsafe(&mut self, cipher_key_array: &[u8;32])
     {
-        let keys = M256Bit { array_u8: cipher_key.clone() };
+        #[repr(C)]
+        union M256Bit {
+            array_u8: [u8;32],
+            array_u32: [u32;8]
+        }
+        
+        let keys = M256Bit { array_u8: cipher_key_array.clone() };
         self.cipher_key.copy_from_slice(unsafe{ &keys.array_u32 });
         self.prepare_round_keys();
     }
 
-    pub fn set_key_from_u8_slice(&mut self, cipher_key: &[u8]) {
-        assert!(cipher_key.len() == 32);
-        let src_ptr = cipher_key.as_ptr() as *const u32;
+    #[allow(dead_code)]
+    // faster, but platform specific, do not use!
+    fn set_key_from_bytes_unsafe(&mut self, cipher_key_bytes: &[u8]) {
+        assert!(cipher_key_bytes.len() == 32);
+        let src_ptr = cipher_key_bytes.as_ptr() as *const u32;
         let dst_ptr =  self.cipher_key.as_mut_ptr();
         let count = self.cipher_key.len();
         unsafe {std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, count)};
+        self.prepare_round_keys();
+    }
+
+    pub fn set_key_from_bytes(&mut self, cipher_key_bytes: &[u8]) {
+        assert!(cipher_key_bytes.len() == 32);
+
+        let mut array_u8 = [0u8;4];
+        for (index, chunk) in cipher_key_bytes.chunks(4).enumerate() {
+            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+            self.cipher_key[index] = u32::from_be_bytes(array_u8);
+        }
+
         self.prepare_round_keys();
     }
 
@@ -140,35 +150,33 @@ impl CryptoEngine {
     }
 
     #[inline]
-    fn split_into_u32(a: u64) -> (u32, u32) {
-        let a_0 = (a & 0xFFFFFFFF) as u32;
-        let a_1 = (a >> 32) as u32;
-        (a_1, a_0)
+    fn u64_split(a: u64) -> (u32, u32) {
+        ((a >> 32) as u32, a  as u32)
     } 
 
     #[inline]
-    fn join_as_u64(a_1: u32, a_0: u32) -> u64 {
+    fn u64_join(a_1: u32, a_0: u32) -> u64 {
         ((a_0 as u64) << 32) | (a_1 as u64)
     } 
 
-    pub fn encrypt(&self, plaintext: u64) -> u64 {
-        // divide the input block into right and left parts
-        let (mut a_1, mut a_0) = CryptoEngine::split_into_u32(plaintext);
+    pub fn encrypt(&self, block_u64: u64) -> u64 {
+        // split the input block into u32 parts
+        let (mut a_1, mut a_0) = CryptoEngine::u64_split(block_u64);
 
-        // transformations
+        // crypto transformations
         let mut round = 0;
         while round < 32 {
             (a_1, a_0) = self.transformation_big_g(self.round_keys[round], a_1, a_0); 
             round += 1;
         }
 
-        // join splitted parts into u64 result
-        CryptoEngine::join_as_u64(a_1, a_0)
+        // join u32 parts into u64 block
+        CryptoEngine::u64_join(a_1, a_0)
     }
     
-    pub fn decrypt(&self, ciphertext: u64) -> u64 {
-        // divide the input block into right and left parts
-        let (mut b_1, mut b_0) = CryptoEngine::split_into_u32(ciphertext);
+    pub fn decrypt(&self, block_u64: u64) -> u64 {
+        // split the input block into u32 parts
+        let (mut b_1, mut b_0) = CryptoEngine::u64_split(block_u64);
 
         // transformations
         let mut round = 32;
@@ -177,8 +185,8 @@ impl CryptoEngine {
             (b_1, b_0) = self.transformation_big_g(self.round_keys[round], b_1, b_0);
         }
 
-        // join splitted parts into u64 result
-        CryptoEngine::join_as_u64(b_1, b_0)
+        // join u32 parts into u64 block
+        CryptoEngine::u64_join(b_1, b_0)
     }
 
     pub fn encrypt_buffer(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
@@ -194,7 +202,26 @@ impl CryptoEngine {
     }
 
     fn process_buffer_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
+        let mut result = Vec::<u8>::with_capacity(src_buf.len());
+        for chunk in src_buf.chunks(8) {
+            let mut array_u8 = [0u8;8];
+            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+            let block_u64 = u64::from_be_bytes(array_u8);
+            let result_u64 = m_invoke(&self, block_u64);
+            result.extend_from_slice(&result_u64.to_be_bytes());
+        }
+        result
+    }
 
+    #[allow(dead_code)]
+    fn process_buffer_ecb_unsafe(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
+
+        #[repr(C)]
+        union M64Bit {
+            v: u64,
+            array_u8: [u8;8]
+        }
+        
         let mut result = Vec::<u8>::with_capacity(src_buf.len());
 
         for chunk in src_buf.chunks(8) {
@@ -234,7 +261,20 @@ mod tests {
     }
 
     #[test]
-    fn set_keys_rfc8891() {
+    fn initialize_with_key_rfc8891() {
+        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
+    }
+
+    #[test]
+    fn set_key_rfc8891() {
+        let mut gost = CryptoEngine::new();
+        gost.set_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
+    }
+
+    #[test]
+    fn set_keys_from_u8_unsafe_little_endian_rfc8891() {
         let cipher_key_u8: [u8;32] = [
             0xcc, 0xdd, 0xee, 0xff,   
             0x88, 0x99, 0xaa, 0xbb,   
@@ -246,13 +286,30 @@ mod tests {
             0xff, 0xfe, 0xfd, 0xfc,   
             ];
 
-        let mut gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        let mut gost = CryptoEngine::new();
+
+        gost.set_key_from_array_unsafe(&cipher_key_u8);
         assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
 
-        gost.set_key_from_u8(&cipher_key_u8);
+        gost.set_key_from_bytes_unsafe(&cipher_key_u8);
         assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
+    }
 
-        gost.set_key_from_u8_slice(&cipher_key_u8);
+    #[test]
+    fn set_keys_from_big_endian_u8_array_rfc8891() {
+        let cipher_key_u8: [u8;32] = [
+             0xff, 0xee, 0xdd, 0xcc, 
+             0xbb, 0xaa, 0x99, 0x88, 
+             0x77, 0x66, 0x55, 0x44, 
+             0x33, 0x22, 0x11, 0x00, 
+             0xf0, 0xf1, 0xf2, 0xf3, 
+             0xf4, 0xf5, 0xf6, 0xf7, 
+             0xf8, 0xf9, 0xfa, 0xfb, 
+             0xfc, 0xfd, 0xfe, 0xff, 
+            ];
+
+        let mut gost = CryptoEngine::new();
+        gost.set_key_from_bytes(&cipher_key_u8);
         assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
     }
 
@@ -300,14 +357,14 @@ mod tests {
     fn split_into_u32_rfc8891() {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-        assert_eq!(CryptoEngine::split_into_u32(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
+        assert_eq!(CryptoEngine::u64_split(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
     }
 
     #[test]
     fn join_as_u64_rfc8891() {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-        assert_eq!(CryptoEngine::join_as_u64(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
+        assert_eq!(CryptoEngine::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
     }
 
     #[test]
@@ -379,16 +436,16 @@ mod tests {
         /*
             S-Box = SUBSTITUTION_BOX_CBR
 
-            K1 (Little-endian) = 0x733D2C20 0x65686573 0x74746769 0x79676120 0x626E7373 0x20657369 0x326C6568 0x33206D54
+            K1 (little-endian) = 0x733D2C20 0x65686573 0x74746769 0x79676120 0x626E7373 0x20657369 0x326C6568 0x33206D54
             K1 = [0x33206D54, 0x326C6568, 0x20657369, 0x626E7373, 0x79676120, 0x74746769, 0x65686573, 0x733D2C20]    
 
-            K2 (Little-endian) = 0x110C733D 0x0D166568 0x130E7474 0x06417967 0x1D00626E 0x161A2065 0x090D326C 0x4D393320
+            K2 (little-endian) = 0x110C733D 0x0D166568 0x130E7474 0x06417967 0x1D00626E 0x161A2065 0x090D326C 0x4D393320
             K2 = [0x4D393320, 0x090D326C, 0x161A2065, 0x1D00626E, 0x06417967, 0x130E7474, 0x0D166568, 0x110C733D]    
 
-            K3 (Little-endian) = 0x80B111F3 0x730DF216 0x850013F1 0xC7E1F941 0x620C1DFF 0x3ABAE91A 0x3FA109F2 0xF513B239
+            K3 (little-endian) = 0x80B111F3 0x730DF216 0x850013F1 0xC7E1F941 0x620C1DFF 0x3ABAE91A 0x3FA109F2 0xF513B239
             k3 = [0xF513B239, 0x3FA109F2, 0x3ABAE91A, 0x620C1DFF, 0xC7E1F941, 0x850013F1, 0x730DF216, 0x80B111F3]
 
-            K4 (Little-endian) = 0xA0E2804E 0xFF1B73F2 0xECE27A00 0xE7B8C7E1 0xEE1D620C 0xAC0CC5BA 0xA804C05E 0xA18B0AEC
+            K4 (little-endian) = 0xA0E2804E 0xFF1B73F2 0xECE27A00 0xE7B8C7E1 0xEE1D620C 0xAC0CC5BA 0xA804C05E 0xA18B0AEC
             k4 = [0xA18B0AEC, 0xA804C05E, 0xAC0CC5BA, 0xEE1D620C, 0xE7B8C7E1, 0xECE27A00, 0xFF1B73F2, 0xA0E2804E]
 
             Outputs:
