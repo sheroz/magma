@@ -1,20 +1,10 @@
-// https://datatracker.ietf.org/doc/html/rfc8891.html : GOST R 34.12-2015: Block Cipher "Magma"
-// https://datatracker.ietf.org/doc/html/rfc5830
-// https://www.rfc-editor.org/rfc/rfc7836
-// https://en.wikipedia.org/wiki/GOST_%28block_cipher%29
-// https://standartgost.ru/g/%D0%93%D0%9E%D0%A1%D0%A2_28147-89
-// https://ru.wikipedia.org/wiki/%D0%93%D0%9E%D0%A1%D0%A2_28147-89
-// https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation
-// https://ru.wikipedia.org/wiki/%D0%A0%D0%B5%D0%B6%D0%B8%D0%BC_%D1%88%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F
-// https://datatracker.ietf.org/doc/html/rfc4357
-
-pub struct CryptoEngine {
+pub struct Magma {
     cipher_key: [u32;8],
     round_keys: [u32;32],
     substitution_box: [u8;128]
 }
 
-pub enum Mode {
+pub enum MagmaMode {
     ECB, // Electronic Codebook Mode
 
     /*
@@ -24,7 +14,7 @@ pub enum Mode {
     */
 }
 
-impl CryptoEngine {
+impl Magma {
     pub const SUBSTITUTION_BOX_RFC7836: [u8;128] = [
         0xC, 0x4, 0x6, 0x2, 0xA, 0x5, 0xB, 0x9, 0xE, 0x8, 0xD, 0x7, 0x0, 0x3, 0xF, 0x1,
         0x6, 0x8, 0x2, 0x3, 0x9, 0xA, 0x5, 0xC, 0x1, 0xE, 0x4, 0x7, 0xB, 0xD, 0x0, 0xF,
@@ -48,16 +38,16 @@ impl CryptoEngine {
         0x1, 0xF, 0xD, 0x0, 0x5, 0x7, 0xA, 0x4, 0x9, 0x2, 0x3, 0xE, 0x6, 0xB, 0x8, 0xC,
     ];
 
-    pub fn new() -> CryptoEngine {
+    pub fn new() -> Magma {
         let cipher_key = [0u32;8];
         let round_keys= [0u32;32];
         let mut substitution_box = [0u8;128];
-        substitution_box.copy_from_slice(&CryptoEngine::SUBSTITUTION_BOX_RFC7836);
-        CryptoEngine { cipher_key, round_keys, substitution_box }
+        substitution_box.copy_from_slice(&Magma::SUBSTITUTION_BOX_RFC7836);
+        Magma { cipher_key, round_keys, substitution_box }
     }
 
-    pub fn new_with_key(cipher_key: &[u32;8]) -> CryptoEngine {
-        let mut engine = CryptoEngine::new();
+    pub fn new_with_key(cipher_key: &[u32;8]) -> Magma {
+        let mut engine = Magma::new();
         engine.set_key(cipher_key);
         engine
     }
@@ -135,7 +125,7 @@ impl CryptoEngine {
 
     pub fn encrypt(&self, block_u64: u64) -> u64 {
         // split the input block into u32 parts
-        let (mut a_1, mut a_0) = CryptoEngine::u64_split(block_u64);
+        let (mut a_1, mut a_0) = Magma::u64_split(block_u64);
 
         // crypto transformations
         let mut round = 0;
@@ -145,12 +135,12 @@ impl CryptoEngine {
         }
 
         // join u32 parts into u64 block
-        CryptoEngine::u64_join(a_1, a_0)
+        Magma::u64_join(a_1, a_0)
     }
     
     pub fn decrypt(&self, block_u64: u64) -> u64 {
         // split the input block into u32 parts
-        let (mut b_1, mut b_0) = CryptoEngine::u64_split(block_u64);
+        let (mut b_1, mut b_0) = Magma::u64_split(block_u64);
 
         // transformations
         let mut round = 32;
@@ -160,22 +150,22 @@ impl CryptoEngine {
         }
 
         // join u32 parts into u64 block
-        CryptoEngine::u64_join(b_1, b_0)
+        Magma::u64_join(b_1, b_0)
     }
 
-    pub fn encrypt_buffer(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
-        match mode {
-            Mode::ECB => self.process_buffer_ecb(buf, CryptoEngine::encrypt),
+    pub fn encrypt_buffer(&mut self, buf: &[u8], magma_mode: MagmaMode) -> Vec<u8> {
+        match magma_mode {
+            MagmaMode::ECB => self.process_buffer_ecb(buf, Magma::encrypt),
         }
     }
     
-    pub fn decrypt_buffer(&mut self, buf: &[u8], mode: Mode) -> Vec<u8> {
-        match mode {
-            Mode::ECB => self.process_buffer_ecb(buf, CryptoEngine::decrypt),
+    pub fn decrypt_buffer(&mut self, buf: &[u8], magma_mode: MagmaMode) -> Vec<u8> {
+        match magma_mode {
+            MagmaMode::ECB => self.process_buffer_ecb(buf, Magma::decrypt),
         }
     }
 
-    fn process_buffer_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
+    fn process_buffer_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&Magma, u64) -> u64) -> Vec<u8> {
         let mut result = Vec::<u8>::with_capacity(src_buf.len());
         for chunk in src_buf.chunks(8) {
             let mut array_u8 = [0u8;8];
@@ -204,23 +194,23 @@ mod tests {
 
     #[test]
     fn default_initialization() {
-        let gost = CryptoEngine::new();
-        assert_eq!(gost.cipher_key, [0u32;8]);
-        assert_eq!(gost.round_keys, [0u32;32]);
-        assert_eq!(gost.substitution_box, CryptoEngine::SUBSTITUTION_BOX_RFC7836);
+        let magma = Magma::new();
+        assert_eq!(magma.cipher_key, [0u32;8]);
+        assert_eq!(magma.round_keys, [0u32;32]);
+        assert_eq!(magma.substitution_box, Magma::SUBSTITUTION_BOX_RFC7836);
     }
 
     #[test]
     fn initialize_with_key_rfc8891() {
-        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
-        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
+        let magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(magma.cipher_key, CIPHER_KEY_RFC8891);
     }
 
     #[test]
     fn set_key_rfc8891() {
-        let mut gost = CryptoEngine::new();
-        gost.set_key(&CIPHER_KEY_RFC8891);
-        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
+        let mut magma = Magma::new();
+        magma.set_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(magma.cipher_key, CIPHER_KEY_RFC8891);
     }
 
     #[test]
@@ -236,14 +226,14 @@ mod tests {
              0xfc, 0xfd, 0xfe, 0xff, 
             ];
 
-        let mut gost = CryptoEngine::new();
-        gost.set_key_from_bytes(&cipher_key_u8);
-        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
+        let mut magma = Magma::new();
+        magma.set_key_from_bytes(&cipher_key_u8);
+        assert_eq!(magma.cipher_key, CIPHER_KEY_RFC8891);
     }
 
     #[test]
     fn round_keys_rfc8891() {
-        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        let magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
 
         let round_keys: [u32;32]= [
             0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff,
@@ -252,7 +242,7 @@ mod tests {
             0xfcfdfeff, 0xf8f9fafb, 0xf4f5f6f7, 0xf0f1f2f3, 0x33221100, 0x77665544, 0xbbaa9988, 0xffeeddcc
         ];
 
-        assert_eq!(gost.round_keys, round_keys);
+        assert_eq!(magma.round_keys, round_keys);
     }
 
     #[test]
@@ -260,12 +250,12 @@ mod tests {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
 
-        let gost = CryptoEngine::new();
+        let magma = Magma::new();
 
-        assert_eq!(gost.transformation_t(0xfdb97531), 0x2a196f34);
-        assert_eq!(gost.transformation_t(0x2a196f34), 0xebd9f03a);
-        assert_eq!(gost.transformation_t(0xebd9f03a), 0xb039bb3d);
-        assert_eq!(gost.transformation_t(0xb039bb3d), 0x68695433);
+        assert_eq!(magma.transformation_t(0xfdb97531), 0x2a196f34);
+        assert_eq!(magma.transformation_t(0x2a196f34), 0xebd9f03a);
+        assert_eq!(magma.transformation_t(0xebd9f03a), 0xb039bb3d);
+        assert_eq!(magma.transformation_t(0xb039bb3d), 0x68695433);
     }
 
     #[test]
@@ -273,26 +263,26 @@ mod tests {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
 
-        let gost = CryptoEngine::new();
+        let magma = Magma::new();
 
-        assert_eq!(gost.transformation_g(0x87654321, 0xfedcba98), 0xfdcbc20c);
-        assert_eq!(gost.transformation_g(0xfdcbc20c, 0x87654321), 0x7e791a4b);
-        assert_eq!(gost.transformation_g(0x7e791a4b, 0xfdcbc20c), 0xc76549ec);
-        assert_eq!(gost.transformation_g(0xc76549ec, 0x7e791a4b), 0x9791c849);
+        assert_eq!(magma.transformation_g(0x87654321, 0xfedcba98), 0xfdcbc20c);
+        assert_eq!(magma.transformation_g(0xfdcbc20c, 0x87654321), 0x7e791a4b);
+        assert_eq!(magma.transformation_g(0x7e791a4b, 0xfdcbc20c), 0xc76549ec);
+        assert_eq!(magma.transformation_g(0xc76549ec, 0x7e791a4b), 0x9791c849);
     }
 
     #[test]
     fn split_into_u32_rfc8891() {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-        assert_eq!(CryptoEngine::u64_split(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
+        assert_eq!(Magma::u64_split(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
     }
 
     #[test]
     fn join_as_u64_rfc8891() {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-        assert_eq!(CryptoEngine::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
+        assert_eq!(Magma::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
     }
 
     #[test]
@@ -300,7 +290,7 @@ mod tests {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
 
-        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
+        let magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
 
         let (mut a_1, mut a_0) = (0xfedcba98_u32, 0x76543210_u32);
         let expected = [
@@ -339,21 +329,21 @@ mod tests {
         ];
 
         for round in 0..32 {
-            (a_1, a_0) = gost.transformation_big_g(gost.round_keys[round], a_1, a_0); 
+            (a_1, a_0) = magma.transformation_big_g(magma.round_keys[round], a_1, a_0); 
             assert_eq!(expected[round], (a_1, a_0));
         }
     }
 
     #[test]
     fn encrypt_rfc8891() {
-        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
-        assert_eq!(gost.encrypt(PLAINTEXT_RFC8891), ENCRYPTED_RFC8891);
+        let magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(magma.encrypt(PLAINTEXT_RFC8891), ENCRYPTED_RFC8891);
     }
 
     #[test]
     fn decrypt_rfc8891() {
-        let gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
-        assert_eq!(gost.decrypt(ENCRYPTED_RFC8891), PLAINTEXT_RFC8891);
+        let magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
+        assert_eq!(magma.decrypt(ENCRYPTED_RFC8891), PLAINTEXT_RFC8891);
     }
 
     #[test]
@@ -392,24 +382,24 @@ mod tests {
         let s3 = 0x8D34589900FF0E28_u64;
         let s4 = 0xE78604190D2A562D_u64;
 
-        let mut gost = CryptoEngine::new();
-        gost.set_substitution_box(&CryptoEngine::SUBSTITUTION_BOX_RFC5831);
+        let mut magma = Magma::new();
+        magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
         let plaintext = 0x0_u64;
-        let mut gost = CryptoEngine::new();
-        gost.set_substitution_box(&CryptoEngine::SUBSTITUTION_BOX_RFC5831);
+        let mut magma = Magma::new();
+        magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
-        gost.set_key(&k1);
-        assert_eq!(gost.encrypt(plaintext), s1);
+        magma.set_key(&k1);
+        assert_eq!(magma.encrypt(plaintext), s1);
 
-        gost.set_key(&k2);
-        assert_eq!(gost.encrypt(plaintext), s2);
+        magma.set_key(&k2);
+        assert_eq!(magma.encrypt(plaintext), s2);
 
-        gost.set_key(&k3);
-        assert_eq!(gost.encrypt(plaintext), s3);
+        magma.set_key(&k3);
+        assert_eq!(magma.encrypt(plaintext), s3);
 
-        gost.set_key(&k4);
-        assert_eq!(gost.encrypt(plaintext), s4);
+        magma.set_key(&k4);
+        assert_eq!(magma.encrypt(plaintext), s4);
     }
 
     #[test]
@@ -428,20 +418,20 @@ mod tests {
         let s4 = 0xE78604190D2A562D_u64;
 
         let plaintext = 0x0_u64;
-        let mut gost = CryptoEngine::new();
-        gost.set_substitution_box(&CryptoEngine::SUBSTITUTION_BOX_RFC5831);
+        let mut magma = Magma::new();
+        magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
-        gost.set_key(&k1);
-        assert_eq!(gost.decrypt(s1), plaintext);
+        magma.set_key(&k1);
+        assert_eq!(magma.decrypt(s1), plaintext);
 
-        gost.set_key(&k2);
-        assert_eq!(gost.decrypt(s2), plaintext);
+        magma.set_key(&k2);
+        assert_eq!(magma.decrypt(s2), plaintext);
 
-        gost.set_key(&k3);
-        assert_eq!(gost.decrypt(s3), plaintext);
+        magma.set_key(&k3);
+        assert_eq!(magma.decrypt(s3), plaintext);
 
-        gost.set_key(&k4);
-        assert_eq!(gost.decrypt(s4), plaintext);
+        magma.set_key(&k4);
+        assert_eq!(magma.decrypt(s4), plaintext);
     }
 
     #[test]
@@ -455,11 +445,11 @@ mod tests {
 
         let txt_bytes = txt.as_bytes();
 
-        let mut gost = CryptoEngine::new_with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = gost.encrypt_buffer(txt_bytes, Mode::ECB);
+        let mut magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
+        let encrypted = magma.encrypt_buffer(txt_bytes, MagmaMode::ECB);
         assert!(!encrypted.is_empty());
 
-        let mut decrypted = gost.decrypt_buffer(&encrypted, Mode::ECB);
+        let mut decrypted = magma.decrypt_buffer(&encrypted, MagmaMode::ECB);
         assert!(decrypted.len() >= encrypted.len());
 
         // remove padding bytes
