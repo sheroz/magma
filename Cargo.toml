@@ -6,7 +6,6 @@ authors = ["Sheroz Khaydarov"]
 description = "Block Cipher Magma (GOST R 34.12-2015, former GOST 28147-89)"
 readme = "README.md"
 repository = "https://github.com/sheroz/cipher_magma"
-license = "MIT"
 license-file = "LICENSE.txt"
 
 [dependencies]
