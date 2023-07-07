@@ -40,7 +40,7 @@ impl Magma {
 
     pub fn new() -> Magma {
         let cipher_key = [0u32;8];
-        let round_keys= [0u32;32];
+        let round_keys = [0u32;32];
         let substitution_box = Magma::SUBSTITUTION_BOX_RFC7836.clone();
         Magma { cipher_key, round_keys, substitution_box }
     }
@@ -90,8 +90,8 @@ impl Magma {
     
     #[inline]
     fn transformation_t(&self, a: u32) -> u32 {
-		let mut shift_count  = 0;
 		let mut res: u32 = 0;
+		let mut shift_count  = 0;
 		for i in 0..8 {
 			let v= (a >> shift_count) & 0xF;
 			let s = self.substitution_box[(i * 16 + v) as usize] as u32;
@@ -183,6 +183,7 @@ mod tests {
 
     // Test vectors RFC8891:
     // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
+
     const CIPHER_KEY_RFC8891: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
@@ -429,7 +430,6 @@ mod tests {
 
     #[test]
     fn encrypt_decrypt_buffer_ecb() {
-
         let txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
             Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
             Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
