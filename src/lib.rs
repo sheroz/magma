@@ -41,8 +41,7 @@ impl Magma {
     pub fn new() -> Magma {
         let cipher_key = [0u32;8];
         let round_keys= [0u32;32];
-        let mut substitution_box = [0u8;128];
-        substitution_box.copy_from_slice(&Magma::SUBSTITUTION_BOX_RFC7836);
+        let substitution_box = Magma::SUBSTITUTION_BOX_RFC7836.clone();
         Magma { cipher_key, round_keys, substitution_box }
     }
 
