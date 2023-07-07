@@ -73,32 +73,6 @@ impl CryptoEngine {
         self.prepare_round_keys();
     }
 
-    #[allow(dead_code)]
-    // the fastest, but platform specific, do not use!
-    fn set_key_from_array_unsafe(&mut self, cipher_key_array: &[u8;32])
-    {
-        #[repr(C)]
-        union M256Bit {
-            array_u8: [u8;32],
-            array_u32: [u32;8]
-        }
-        
-        let keys = M256Bit { array_u8: cipher_key_array.clone() };
-        self.cipher_key.copy_from_slice(unsafe{ &keys.array_u32 });
-        self.prepare_round_keys();
-    }
-
-    #[allow(dead_code)]
-    // faster, but platform specific, do not use!
-    fn set_key_from_bytes_unsafe(&mut self, cipher_key_bytes: &[u8]) {
-        assert!(cipher_key_bytes.len() == 32);
-        let src_ptr = cipher_key_bytes.as_ptr() as *const u32;
-        let dst_ptr =  self.cipher_key.as_mut_ptr();
-        let count = self.cipher_key.len();
-        unsafe {std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, count)};
-        self.prepare_round_keys();
-    }
-
     pub fn set_key_from_bytes(&mut self, cipher_key_bytes: &[u8]) {
         assert!(cipher_key_bytes.len() == 32);
 
@@ -212,30 +186,6 @@ impl CryptoEngine {
         }
         result
     }
-
-    #[allow(dead_code)]
-    fn process_buffer_ecb_unsafe(&mut self, src_buf: &[u8], m_invoke: fn(&CryptoEngine, u64) -> u64) -> Vec<u8> {
-
-        #[repr(C)]
-        union M64Bit {
-            v: u64,
-            array_u8: [u8;8]
-        }
-        
-        let mut result = Vec::<u8>::with_capacity(src_buf.len());
-
-        for chunk in src_buf.chunks(8) {
-            let mut m64bit = M64Bit { v: 0 };
-            unsafe {
-                std::ptr::copy_nonoverlapping(chunk.as_ptr(), m64bit.array_u8.as_mut_ptr(), chunk.len());
-                m64bit.v = m_invoke(&self, m64bit.v);
-                result.extend_from_slice(&m64bit.array_u8);
-            }
-        }
-
-        result
-    }
-
 }
 
 #[cfg(test)]
@@ -270,28 +220,6 @@ mod tests {
     fn set_key_rfc8891() {
         let mut gost = CryptoEngine::new();
         gost.set_key(&CIPHER_KEY_RFC8891);
-        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
-    }
-
-    #[test]
-    fn set_keys_from_u8_unsafe_little_endian_rfc8891() {
-        let cipher_key_u8: [u8;32] = [
-            0xcc, 0xdd, 0xee, 0xff,   
-            0x88, 0x99, 0xaa, 0xbb,   
-            0x44, 0x55, 0x66, 0x77,   
-            0x00, 0x11, 0x22, 0x33,   
-            0xf3, 0xf2, 0xf1, 0xf0,   
-            0xf7, 0xf6, 0xf5, 0xf4,   
-            0xfb, 0xfa, 0xf9, 0xf8,   
-            0xff, 0xfe, 0xfd, 0xfc,   
-            ];
-
-        let mut gost = CryptoEngine::new();
-
-        gost.set_key_from_array_unsafe(&cipher_key_u8);
-        assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
-
-        gost.set_key_from_bytes_unsafe(&cipher_key_u8);
         assert_eq!(gost.cipher_key, CIPHER_KEY_RFC8891);
     }
 
