@@ -93,7 +93,7 @@ impl Magma {
 		let mut res: u32 = 0;
 		let mut shift_count = 0;
 		for i in 0..8 {
-			let v= (a >> shift_count) & 0xF;
+			let v = (a >> shift_count) & 0xF;
 			let s = self.substitution_box[(i * 16 + v) as usize] as u32;
 			res |= s << shift_count;
 			shift_count += 4;
@@ -141,7 +141,7 @@ impl Magma {
         // split the input block into u32 parts
         let (mut b_1, mut b_0) = Magma::u64_split(block_u64);
 
-        // transformations
+        // crypto transformations
         let mut round = 32;
         while round != 0 {
             round -= 1;
