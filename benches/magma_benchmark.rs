@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use cipher_magma::{Magma, MagmaMode};
+use cipher_magma::{Magma, CipherMode};
 
 fn magma_block_benchmark(c: &mut Criterion) {
     let magma = Magma::new();
@@ -15,10 +15,10 @@ fn magma_buffer_benchmark(c: &mut Criterion) {
     let source_buffer = [0_u8; 4096];
     let mut magma = Magma::new();
     c.bench_function("encrypt", |bencher| {
-        bencher.iter(|| magma.encrypt_buffer(&source_buffer, MagmaMode::ECB))
+        bencher.iter(|| magma.encrypt_buffer(&source_buffer, CipherMode::ECB))
     });
     c.bench_function("decrypt", |bencher| {
-        bencher.iter(|| magma.decrypt_buffer(&source_buffer, MagmaMode::ECB))
+        bencher.iter(|| magma.decrypt_buffer(&source_buffer, CipherMode::ECB))
     });
 }
 

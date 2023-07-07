@@ -1,10 +1,11 @@
-use cipher_magma::{Magma, MagmaMode};
+use cipher_magma::{Magma, CipherMode};
 
 fn main() {
     sample_encrypt_block();
     sample_encrypt_text(); 
 }
 
+/// Block encryption sample
 fn sample_encrypt_block() {
     let mut magma = Magma::new();
 
@@ -23,6 +24,7 @@ fn sample_encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
+/// Buffer encryption sample
 fn sample_encrypt_text() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -38,10 +40,10 @@ fn sample_encrypt_text() {
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
     let mut magma = Magma::new_with_key(&cipher_key);
-    let encrypted = magma.encrypt_buffer(source_bytes, MagmaMode::ECB);
+    let encrypted = magma.encrypt_buffer(source_bytes, CipherMode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.decrypt_buffer(&encrypted, MagmaMode::ECB);
+    let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());
