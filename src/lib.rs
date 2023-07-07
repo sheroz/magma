@@ -1,20 +1,41 @@
+//! Block Cipher "Magma"
+//! 
+//! Implemented and tested according to specifications:
+//! 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
+//! 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
+
+/// Block Cipher "Magma"
 pub struct Magma {
     cipher_key: [u32;8],
     round_keys: [u32;32],
     substitution_box: [u8;128]
 }
 
-pub enum MagmaMode {
-    ECB, // Electronic Codebook Mode
+/// Cipher mode
+/// 
+/// Only ECB mode is currently implemented.
+/// 
+/// CTR, CFB, MAC modes are not implemented yet.
+pub enum CipherMode {
+    /// Electronic Codebook Mode
+    ECB, 
 
     /*
-    CTR, // Counter Encryption Mode
-    CFB, // CipherFeedback Mode
-    MAC, // Message Authentication Code
+    /// Counter Encryption Mode
+    CTR, 
+
+    /// CipherFeedback Mode
+    CFB,
+
+    /// Message Authentication Code 
+    MAC, 
     */
 }
 
 impl Magma {
+
+    /// Substitution Box (S-Box) data according to [Appendix C. RFC7836](https://datatracker.ietf.org/doc/html/rfc7836#appendix-C)
+    /// Parameter set: id-tc26-gost-28147-param-Z
     pub const SUBSTITUTION_BOX_RFC7836: [u8;128] = [
         0xC, 0x4, 0x6, 0x2, 0xA, 0x5, 0xB, 0x9, 0xE, 0x8, 0xD, 0x7, 0x0, 0x3, 0xF, 0x1,
         0x6, 0x8, 0x2, 0x3, 0x9, 0xA, 0x5, 0xC, 0x1, 0xE, 0x4, 0x7, 0xB, 0xD, 0x0, 0xF,
@@ -26,7 +47,10 @@ impl Magma {
         0x1, 0x7, 0xE, 0xD, 0x0, 0x5, 0x8, 0x3, 0x4, 0xF, 0xA, 0x6, 0x9, 0xC, 0xB, 0x2,
     ];
 
-    // OID: 1.2.643.2.2.30.0
+    /// Substitution Box (S-Box) data according to [RFC5831](https://datatracker.ietf.org/doc/html/rfc5831#section-7.1)
+    /// As per [Appendix B of RFC8891](https://datatracker.ietf.org/doc/html/rfc8891.html#section-appendix.b) data values converted
+    /// from little-endian to big-endian format.
+    /// OID: 1.2.643.2.2.30.0
     pub const SUBSTITUTION_BOX_RFC5831: [u8;128] = [
         0x4, 0xA, 0x9, 0x2, 0xD, 0x8, 0x0, 0xE, 0x6, 0xB, 0x1, 0xC, 0x7, 0xF, 0x5, 0x3,
         0xE, 0xB, 0x4, 0xC, 0x6, 0xD, 0xF, 0xA, 0x2, 0x3, 0x8, 0x1, 0x0, 0x7, 0x5, 0x9,
@@ -38,6 +62,13 @@ impl Magma {
         0x1, 0xF, 0xD, 0x0, 0x5, 0x7, 0xA, 0x4, 0x9, 0x2, 0x3, 0xE, 0x6, 0xB, 0x8, 0xC,
     ];
 
+    /// Returns a new Magma by using RFC7836 based substitution box
+    ///
+    /// # Example
+    /// ```
+    /// use cipher_magma::Magma;
+    /// let magma = Magma::new();
+    /// ```
     pub fn new() -> Magma {
         let cipher_key = [0u32;8];
         let round_keys = [0u32;32];
@@ -45,23 +76,52 @@ impl Magma {
         Magma { cipher_key, round_keys, substitution_box }
     }
 
+    /// Returns a new Magma, initialized with cipher key
+    /// and using RFC7836 based substitution box
+    /// 
+    /// # Arguments
+    ///
+    /// * `cipher_key` - A reference to `[u32;8]` array
+    ///
+    /// # Example
+    /// ```
+    /// use cipher_magma::Magma;
+    /// let cipher_key: [u32;8] = [
+    ///     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+    ///     ];
+    /// 
+    /// let magma = Magma::new_with_key(&cipher_key);
+    /// ```
     pub fn new_with_key(cipher_key: &[u32;8]) -> Magma {
         let mut engine = Magma::new();
         engine.set_key(cipher_key);
         engine
     }
 
-    /// sets the s_box
+    /// Sets the substitution box
+    /// 
+    /// # Arguments
+    ///
+    /// * `substitution_box` - A reference to `[u8;128]` array
     pub fn set_substitution_box(&mut self, substitution_box: &[u8;128]) {
         self.substitution_box.copy_from_slice(substitution_box);
     }
 
-    /// sets the cipher key 
+    /// Sets the cipher key from `[u32;8]` array
+    /// 
+    /// # Arguments
+    ///
+    /// * `cipher_key` - A reference to `[u32;8]` array
     pub fn set_key(&mut self, cipher_key: &[u32;8]) {
         self.cipher_key.clone_from(cipher_key);
         self.prepare_round_keys();
     }
 
+    /// Sets the cipher key from slice of u8 bytes
+    /// 
+    /// # Arguments
+    ///
+    /// * `cipher_key_bytes` - A `&[u8]` slice
     pub fn set_key_from_bytes(&mut self, cipher_key_bytes: &[u8]) {
         assert!(cipher_key_bytes.len() == 32);
 
@@ -74,6 +134,7 @@ impl Magma {
         self.prepare_round_keys();
     }
 
+    /// Prepares [round keys](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.3) from the cipher key according
     fn prepare_round_keys(&mut self) {
         const ROUND_KEY_POSITION: [u8;32] = [
             0, 1, 2, 3, 4, 5, 6, 7,
@@ -87,7 +148,9 @@ impl Magma {
             self.round_keys[index]= self.cipher_key[round_key_position];
         }
     }
-    
+
+    /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
+    /// `t: V_32 -> V_32`
     #[inline]
     fn transformation_t(&self, a: u32) -> u32 {
 		let mut res: u32 = 0;
@@ -101,12 +164,16 @@ impl Magma {
 		res
     }
 
+    /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
+    /// `g[k]: V_32 -> V_32`
     #[inline]
     fn transformation_g(&self, k: u32, a: u32) -> u32 {
         let res = self.transformation_t(((k as u64) + (a as u64)) as u32);
         res.rotate_left(11)
     }
 
+    /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
+    /// `G[k]: V_32[*]V_32 -> V_32[*]V_32`
     #[inline]
     fn transformation_big_g(&self, k: u32, a_1: u32, a_0: u32) -> (u32, u32) {
         (a_0, self.transformation_g(k, a_0) ^ a_1)
@@ -122,6 +189,10 @@ impl Magma {
         ((a_0 as u64) << 32) | (a_1 as u64)
     } 
 
+    /// Returns [encrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.1) as a u64 value
+    /// # Arguments
+    ///
+    /// * `block_u64` - A `u64` value 
     pub fn encrypt(&self, block_u64: u64) -> u64 {
         // split the input block into u32 parts
         let (mut a_1, mut a_0) = Magma::u64_split(block_u64);
@@ -137,6 +208,10 @@ impl Magma {
         Magma::u64_join(a_1, a_0)
     }
     
+    /// Returns [decrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.2) as a u64 value
+    /// # Arguments
+    ///
+    /// * `block_u64` - A `u64` value 
     pub fn decrypt(&self, block_u64: u64) -> u64 {
         // split the input block into u32 parts
         let (mut b_1, mut b_0) = Magma::u64_split(block_u64);
@@ -152,15 +227,25 @@ impl Magma {
         Magma::u64_join(b_1, b_0)
     }
 
-    pub fn encrypt_buffer(&mut self, buf: &[u8], magma_mode: MagmaMode) -> Vec<u8> {
-        match magma_mode {
-            MagmaMode::ECB => self.process_buffer_ecb(buf, Magma::encrypt),
+    /// Returns encrypted buffer as `Vec<u8>`
+    /// # Arguments
+    ///
+    /// * `buf` - A plaintext as `&[u8]` slice
+    /// * `cipher_mode` - encryption mode as defined in `CipherMode`
+    pub fn encrypt_buffer(&mut self, buf: &[u8], cipher_mode: CipherMode) -> Vec<u8> {
+        match cipher_mode {
+            CipherMode::ECB => self.process_buffer_ecb(buf, Magma::encrypt),
         }
     }
     
-    pub fn decrypt_buffer(&mut self, buf: &[u8], magma_mode: MagmaMode) -> Vec<u8> {
-        match magma_mode {
-            MagmaMode::ECB => self.process_buffer_ecb(buf, Magma::decrypt),
+    /// Returns decrypted buffer as `Vec<u8>`
+    /// # Arguments
+    ///
+    /// * `buf` - A ciphertext as `&[u8]` slice
+    /// * `cipher_mode` - decryption mode as defined in `CipherMode`
+    pub fn decrypt_buffer(&mut self, buf: &[u8], cipher_mode: CipherMode) -> Vec<u8> {
+        match cipher_mode {
+            CipherMode::ECB => self.process_buffer_ecb(buf, Magma::decrypt),
         }
     }
 
@@ -439,10 +524,10 @@ mod tests {
         let txt_bytes = txt.as_bytes();
 
         let mut magma = Magma::new_with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.encrypt_buffer(txt_bytes, MagmaMode::ECB);
+        let encrypted = magma.encrypt_buffer(txt_bytes, CipherMode::ECB);
         assert!(!encrypted.is_empty());
 
-        let mut decrypted = magma.decrypt_buffer(&encrypted, MagmaMode::ECB);
+        let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
         assert!(decrypted.len() >= encrypted.len());
 
         // remove padding bytes

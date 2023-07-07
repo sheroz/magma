@@ -1,9 +1,9 @@
 # Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
 
-## Implemented according
+## Implemented and tested according to specifications
 
-1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) GOST R 34.12-2015
-2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) GOST 28147-89
+1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
+2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
 
 ## Tested on platforms
 
@@ -12,7 +12,7 @@
 
 ## Sample usage
 
-### Please look at src/bin/sample.rs
+### Please look at [src/bin/sample.rs](src/bin/sample.rs)
 
 #### Block encryption sample
 
@@ -54,10 +54,10 @@ Output:
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
     let mut magma = Magma::new_with_key(&cipher_key);
-    let encrypted = magma.encrypt_buffer(source_bytes, MagmaMode::ECB);
+    let encrypted = magma.encrypt_buffer(source_bytes, CipherMode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.decrypt_buffer(&encrypted, MagmaMode::ECB);
+    let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());
