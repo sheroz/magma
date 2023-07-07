@@ -1,4 +1,4 @@
-//! Block Cipher "Magma"
+//! **Block Cipher "Magma"**
 //! 
 //! Implemented and tested according to specifications:
 //! 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
@@ -13,9 +13,9 @@ pub struct Magma {
 
 /// Cipher mode
 /// 
-/// Only ECB mode is currently implemented.
+/// Only **ECB** mode is currently implemented.
 /// 
-/// CTR, CFB, MAC modes are not implemented yet.
+/// **CTR**, **CFB**, **MAC** modes **are not implemented** yet.
 pub enum CipherMode {
     /// Electronic Codebook Mode
     ECB, 
@@ -23,10 +23,8 @@ pub enum CipherMode {
     /*
     /// Counter Encryption Mode
     CTR, 
-
     /// CipherFeedback Mode
     CFB,
-
     /// Message Authentication Code 
     MAC, 
     */
@@ -35,6 +33,7 @@ pub enum CipherMode {
 impl Magma {
 
     /// Substitution Box (S-Box) data according to [Appendix C. RFC7836](https://datatracker.ietf.org/doc/html/rfc7836#appendix-C)
+    /// 
     /// Parameter set: id-tc26-gost-28147-param-Z
     pub const SUBSTITUTION_BOX_RFC7836: [u8;128] = [
         0xC, 0x4, 0x6, 0x2, 0xA, 0x5, 0xB, 0x9, 0xE, 0x8, 0xD, 0x7, 0x0, 0x3, 0xF, 0x1,
@@ -48,8 +47,10 @@ impl Magma {
     ];
 
     /// Substitution Box (S-Box) data according to [RFC5831](https://datatracker.ietf.org/doc/html/rfc5831#section-7.1)
+    /// 
     /// As per [Appendix B of RFC8891](https://datatracker.ietf.org/doc/html/rfc8891.html#section-appendix.b) data values converted
     /// from little-endian to big-endian format.
+    /// 
     /// OID: 1.2.643.2.2.30.0
     pub const SUBSTITUTION_BOX_RFC5831: [u8;128] = [
         0x4, 0xA, 0x9, 0x2, 0xD, 0x8, 0x0, 0xE, 0x6, 0xB, 0x1, 0xC, 0x7, 0xF, 0x5, 0x3,
@@ -134,7 +135,7 @@ impl Magma {
         self.prepare_round_keys();
     }
 
-    /// Prepares [round keys](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.3) from the cipher key according
+    /// Prepares [round keys](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.3) from the cipher key
     fn prepare_round_keys(&mut self) {
         const ROUND_KEY_POSITION: [u8;32] = [
             0, 1, 2, 3, 4, 5, 6, 7,
@@ -150,6 +151,7 @@ impl Magma {
     }
 
     /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
+    /// 
     /// `t: V_32 -> V_32`
     #[inline]
     fn transformation_t(&self, a: u32) -> u32 {
@@ -165,6 +167,7 @@ impl Magma {
     }
 
     /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
+    /// 
     /// `g[k]: V_32 -> V_32`
     #[inline]
     fn transformation_g(&self, k: u32, a: u32) -> u32 {
@@ -173,6 +176,7 @@ impl Magma {
     }
 
     /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
+    /// 
     /// `G[k]: V_32[*]V_32 -> V_32[*]V_32`
     #[inline]
     fn transformation_big_g(&self, k: u32, a_1: u32, a_0: u32) -> (u32, u32) {
@@ -189,7 +193,8 @@ impl Magma {
         ((a_0 as u64) << 32) | (a_1 as u64)
     } 
 
-    /// Returns [encrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.1) as a u64 value
+    /// Returns [encrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.1) as `u64` value
+    /// 
     /// # Arguments
     ///
     /// * `block_u64` - A `u64` value 
@@ -208,7 +213,8 @@ impl Magma {
         Magma::u64_join(a_1, a_0)
     }
     
-    /// Returns [decrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.2) as a u64 value
+    /// Returns [decrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.2) as `u64` value
+    /// 
     /// # Arguments
     ///
     /// * `block_u64` - A `u64` value 
@@ -228,6 +234,7 @@ impl Magma {
     }
 
     /// Returns encrypted buffer as `Vec<u8>`
+    /// 
     /// # Arguments
     ///
     /// * `buf` - A plaintext as `&[u8]` slice
@@ -239,6 +246,7 @@ impl Magma {
     }
     
     /// Returns decrypted buffer as `Vec<u8>`
+    /// 
     /// # Arguments
     ///
     /// * `buf` - A ciphertext as `&[u8]` slice
