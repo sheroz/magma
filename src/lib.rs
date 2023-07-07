@@ -91,7 +91,7 @@ impl Magma {
     #[inline]
     fn transformation_t(&self, a: u32) -> u32 {
 		let mut res: u32 = 0;
-		let mut shift_count  = 0;
+		let mut shift_count = 0;
 		for i in 0..8 {
 			let v= (a >> shift_count) & 0xF;
 			let s = self.substitution_box[(i * 16 + v) as usize] as u32;
