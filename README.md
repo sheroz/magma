@@ -1,5 +1,10 @@
 # Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
 
+![Crates.io](https://img.shields.io/crates/v/cipher_magma)
+![docs.rs](https://img.shields.io/docsrs/cipher_magma)
+![build & test](https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml/badge.svg)
+![GitHub](https://img.shields.io/github/license/sheroz/cipher_magma)
+
 ## Implemented and tested according to specifications
 
 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
@@ -14,7 +19,7 @@
 
 ### Please look at [src/bin/sample.rs](src/bin/sample.rs)
 
-#### Block encryption sample
+#### Sample of block encryption
 
     let mut magma = Magma::new();
 
@@ -38,7 +43,7 @@ Output:
     Encrypted ciphertext: 4ee901e5c2d8ca3d
     Decrypted block: fedcba9876543210
 
-#### Text encryption sample
+#### Sample of text encryption in ECB mode
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
