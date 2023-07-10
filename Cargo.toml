@@ -8,7 +8,7 @@ documentation = "https://docs.rs/cipher_magma"
 readme = "README.md"
 repository = "https://github.com/sheroz/cipher_magma"
 license = "MIT"
-keywords = ["magma", "gost", "cryptography", "34.12-2015", "28147-89", ]
+keywords = ["magma", "gost", "cryptography", "34.12-2015", "28147-89"]
 
 [dependencies]
 
