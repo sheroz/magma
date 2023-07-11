@@ -16,6 +16,22 @@ pub struct Magma {
 /// Only **ECB** mode is currently implemented.
 /// 
 /// **CTR**, **CFB**, **MAC** modes **are not implemented** yet.
+/// 
+/// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+
+/*
+    RFC 5831: GOST R 34.11-94
+    hash function:
+    https://datatracker.ietf.org/doc/rfc5831/
+    https://datatracker.ietf.org/doc/html/rfc4357
+    https://en.wikipedia.org/wiki/GOST_(hash_function)
+
+    GOST R 34.11-94
+    GOST 34.311-95
+    GOST hash function
+    GOST 28147-89 IMIT
+*/
+
 pub enum CipherMode {
     /// Electronic Codebook Mode
     ECB, 
@@ -23,6 +39,10 @@ pub enum CipherMode {
     /*
     /// Counter Encryption Mode
     CTR, 
+    /// Output Feedback
+    OFB,
+    ///Cipher Block Chaining
+    СВС
     /// CipherFeedback Mode
     CFB,
     /// Message Authentication Code 
