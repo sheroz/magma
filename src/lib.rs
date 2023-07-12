@@ -321,15 +321,33 @@ impl Magma {
 mod tests {
     use super::*;
 
-    // Test vectors RFC8891:
+    // Test vectors RFC8891
     // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-
     const CIPHER_KEY_RFC8891: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
-
     const PLAINTEXT_RFC8891: u64 = 0xfedcba9876543210_u64;
     const ENCRYPTED_RFC8891: u64 = 0x4ee901e5c2d8ca3d_u64;
+
+
+    // Test vectors GOST R 34.13-2015
+    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+    // Page 35, Sections: A.2
+    const CIPHER_KEY_GOST_R3413_2015: [u32;8] = [
+        0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+    ];
+    const PLAINTEXT1_GOST_R3413_2015: u64 = 0x92def06b3c130a59_u64;
+    const PLAINTEXT2_GOST_R3413_2015: u64 = 0xdb54c704f8189d20_u64;
+    const PLAINTEXT3_GOST_R3413_2015: u64 = 0x4a98fb2e67a8024c_u64;
+    const PLAINTEXT4_GOST_R3413_2015: u64 = 0x8912409b17b57e41_u64;
+
+    // Test vectors GOST R 34.13-2015
+    // Encrypting in ECB Mode
+    // Page 35, Section: A.2.1
+    const ENCRYPTED1_GOST_R3413_2015: u64 = 0x2b073f0494f372a0_u64;
+    const ENCRYPTED2_GOST_R3413_2015: u64 = 0xde70e715d3556e48_u64;
+    const ENCRYPTED3_GOST_R3413_2015: u64 = 0x11d8d9e9eacfbc1e_u64;
+    const ENCRYPTED4_GOST_R3413_2015: u64 = 0x7c68260996c67efb_u64;            
 
     #[test]
     fn default_initialization() {
@@ -594,35 +612,58 @@ mod tests {
     }
 
     #[test]
-    fn gost_r_34_13_2015_ecb() {
-        // Test vectors
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 35, Sections: A.2, A.2.1
-    
-        // plaintexts
-        let p1 = 0x92def06b3c130a59;
-        let p2 = 0xdb54c704f8189d20;
-        let p3 = 0x4a98fb2e67a8024c;
-        let p4 = 0x8912409b17b57e41;
-
-        // ciphertexts:
-        let r1 = 0x2b073f0494f372a0;
-        let r2 = 0xde70e715d3556e48;
-        let r3 = 0x11d8d9e9eacfbc1e;
-        let r4 = 0x7c68260996c67efb;            
-
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        assert_eq!(magma.encrypt(p1), r1);
-        assert_eq!(magma.encrypt(p2), r2);
-        assert_eq!(magma.encrypt(p3), r3);
-        assert_eq!(magma.encrypt(p4), r4);
+    fn encrypt_gost_r_34_13_2015_ecb() {
+        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT1_GOST_R3413_2015), ENCRYPTED1_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT2_GOST_R3413_2015), ENCRYPTED2_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT3_GOST_R3413_2015), ENCRYPTED3_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT4_GOST_R3413_2015), ENCRYPTED4_GOST_R3413_2015);
     }
 
     #[test]
-    fn process_buffer_mac() {
+    fn decrypt_gost_r_34_13_2015_ecb() {
+        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED1_GOST_R3413_2015), PLAINTEXT1_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED2_GOST_R3413_2015), PLAINTEXT2_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED3_GOST_R3413_2015), PLAINTEXT3_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED4_GOST_R3413_2015), PLAINTEXT4_GOST_R3413_2015);
+    }
+
+    #[test]
+    fn gost_r_34_13_2015_mac() {
         // Test vectors
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 35, Sections: A.2, A.2.6
 
+        /*
+            R = 2fa2cd99a1290a12,
+            MSB1(R) = 0, K1= R≪ 1 = 5f459b3342521424,
+            MSB1(K1) = 0, следовательно K2 = K1≪ 1= be8b366684a42848,
+            |P4| = n, K1* = K1
+            
+            s = 32
+         */
+
+        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+
+        let i1 = PLAINTEXT1_GOST_R3413_2015;
+        let o1 = magma.encrypt(i1);
+        assert_eq!(o1, ENCRYPTED1_GOST_R3413_2015);
+
+        let i2 = o1 ^ PLAINTEXT2_GOST_R3413_2015;
+        assert_eq!(i2, 0xf053f8006cebef80_u64);
+        let o2 = magma.encrypt(i2);
+        assert_eq!(o2, 0xc89ed814fd5e18e9_u64);
+        
+        let i3 = o2 ^ PLAINTEXT3_GOST_R3413_2015;
+        assert_eq!(i3, 0x8206233a9af61aa5_u64);
+        let o3 = magma.encrypt(i3);
+        assert_eq!(o3, 0xf739b18d34289b00_u64);
+
+        let i4 = 0x216e6a2561cff165_u64;
+        let o4 = 0x154e72102030c5bb_u64;
+        
+        let mac = 0x154e7210_u32;
 
     }
 
