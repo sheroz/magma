@@ -39,7 +39,7 @@ fn sample_encrypt_text() {
     let cipher_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
-    let mut magma = Magma::new_with_key(&cipher_key);
+    let mut magma = Magma::with_key(&cipher_key);
     let encrypted = magma.encrypt_buffer(source_bytes, CipherMode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
