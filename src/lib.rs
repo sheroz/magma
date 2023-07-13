@@ -3,6 +3,20 @@
 //! Implemented and tested according to specifications:
 //! 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
 //! 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
+//! 3. Block Cipher Modes: [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)  
+
+/*
+    RFC 5831: GOST R 34.11-94
+    hash function:
+    https://datatracker.ietf.org/doc/rfc5831/
+    https://datatracker.ietf.org/doc/html/rfc4357
+    https://en.wikipedia.org/wiki/GOST_(hash_function)
+
+    GOST R 34.11-94
+    GOST 34.311-95
+    GOST hash function
+    GOST 28147-89 IMIT
+*/
 
 /// Block Cipher "Magma"
 pub struct Magma {
@@ -11,11 +25,23 @@ pub struct Magma {
     substitution_box: [u8;128]
 }
 
-/// Cipher mode
+/// **Cipher operation**
+pub enum CipherOperation {
+    /// Encrypting operation
+    Encrypt,
+
+    /// Decrypting operation
+    Decrypt,
+
+    /// Message Authentication Code (MAC) Generation
+    MessageAuthentication
+}
+
+/// **Cipher mode**
 /// 
-/// Only **ECB** mode is currently implemented.
+/// * Supported modes: **ECB**, **MAC**
 /// 
-/// **CTR**, **CFB**, **MAC** modes **are not implemented** yet.
+/// * *Not implemented** yet: **CTR**, **OFB**, **СВС**, **CFB**
 /// 
 /// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 pub enum CipherMode {
@@ -39,20 +65,6 @@ pub enum CipherMode {
     /// Message Authentication Code (MAC) Generation Mode
     MAC 
 }
-
-/*
-    RFC 5831: GOST R 34.11-94
-    hash function:
-    https://datatracker.ietf.org/doc/rfc5831/
-    https://datatracker.ietf.org/doc/html/rfc4357
-    https://en.wikipedia.org/wiki/GOST_(hash_function)
-
-    GOST R 34.11-94
-    GOST 34.311-95
-    GOST hash function
-    GOST 28147-89 IMIT
-*/
-
 
 impl Magma {
 
@@ -222,10 +234,10 @@ impl Magma {
     /// 
     /// # Arguments
     ///
-    /// * `block_u64` - A `u64` value 
-    pub fn encrypt(&self, block_u64: u64) -> u64 {
+    /// * `block_in` - a plaintext value as `u64`
+    pub fn encrypt(&self, block_in: u64) -> u64 {
         // split the input block into u32 parts
-        let (mut a_1, mut a_0) = Magma::u64_split(block_u64);
+        let (mut a_1, mut a_0) = Magma::u64_split(block_in);
 
         // crypto transformations
         let mut round = 0;
@@ -242,10 +254,10 @@ impl Magma {
     /// 
     /// # Arguments
     ///
-    /// * `block_u64` - A `u64` value 
-    pub fn decrypt(&self, block_u64: u64) -> u64 {
+    /// * `block_in` - a ciphertext value as `u64`
+    pub fn decrypt(&self, block_in: u64) -> u64 {
         // split the input block into u32 parts
-        let (mut b_1, mut b_0) = Magma::u64_split(block_u64);
+        let (mut b_1, mut b_0) = Magma::u64_split(block_in);
 
         // crypto transformations
         let mut round = 32;
@@ -258,35 +270,41 @@ impl Magma {
         Magma::u64_join(b_1, b_0)
     }
 
-    /// Returns encrypted buffer as `Vec<u8>`
+    /// Returns resulting vector as `Vec<u8>`
     /// 
     /// # Arguments
     ///
-    /// * `buf` - A plaintext as `&[u8]` slice
+    /// * `buf` - a slice of `&[u8]` input data
+    /// * `cipher_operation` - cipher operation as defined in `CipherOperation`
     /// * `cipher_mode` - encryption mode as defined in `CipherMode`
-    pub fn encrypt_buffer(&mut self, buf: &[u8], cipher_mode: CipherMode) -> Vec<u8> {
-        match cipher_mode {
-            CipherMode::ECB => self.process_buffer_ecb(buf, Magma::encrypt),
-            CipherMode::MAC => panic!("CipherMode::MAC can not be used for encrypting buffer")
-        }
-    }
-    
-    /// Returns decrypted buffer as `Vec<u8>`
-    /// 
-    /// # Arguments
-    ///
-    /// * `buf` - A ciphertext as `&[u8]` slice
-    /// * `cipher_mode` - decryption mode as defined in `CipherMode`
-    pub fn decrypt_buffer(&mut self, buf: &[u8], cipher_mode: CipherMode) -> Vec<u8> {
-        match cipher_mode {
-            CipherMode::ECB => self.process_buffer_ecb(buf, Magma::decrypt),
-            CipherMode::MAC => panic!("CipherMode::MAC can not be used for decrypting buffer")
+    pub fn cipher(&mut self, buf: &[u8], cipher_operation: CipherOperation, cipher_mode: CipherMode) -> Vec<u8> {
+        match cipher_operation {
+            CipherOperation::Encrypt => {
+                match cipher_mode {
+                    CipherMode::ECB => self.cipher_ecb(buf, Magma::encrypt),
+                    CipherMode::MAC => panic!("CipherMode::MAC can not be used in encrypting operation!")
+                }
+            },
+            CipherOperation::Decrypt => {
+                match cipher_mode {
+                    CipherMode::ECB => self.cipher_ecb(buf, Magma::decrypt),
+                    CipherMode::MAC => panic!("CipherMode::MAC can not be used in decrypting operation!")
+                }
+            },
+            CipherOperation::MessageAuthentication => {
+                match cipher_mode {
+                    CipherMode::MAC => {
+                        self.cipher_mac(buf).to_be_bytes().to_vec()
+                     },
+                    _ => panic!("Only CipherMode::MAC can be used in MessageAuthentication!")
+                }
+            },
         }
     }
 
-    fn process_buffer_ecb(&mut self, src_buf: &[u8], m_invoke: fn(&Magma, u64) -> u64) -> Vec<u8> {
-        let mut result = Vec::<u8>::with_capacity(src_buf.len());
-        for chunk in src_buf.chunks(8) {
+    fn cipher_ecb(&mut self, buf: &[u8], m_invoke: fn(&Magma, u64) -> u64) -> Vec<u8> {
+        let mut result = Vec::<u8>::with_capacity(buf.len());
+        for chunk in buf.chunks(8) {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block_u64 = u64::from_be_bytes(array_u8);
@@ -299,52 +317,55 @@ impl Magma {
     /// Returns the Message Authentication Code (MAC) value
     /// 
     /// # Arguments
-    /// * src_buf - A slice of `&[u8]` data
+    /// * buf - a slice of `&[u8]` data
     /// 
     /// Implemented according to: 
     /// [MAC generation procedure: Page 26, Section 5.6](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    pub fn generate_mac(&mut self, src_buf: &[u8]) -> u32 {
+    pub fn cipher_mac(&mut self, buf: &[u8]) -> u32 {
 
-        let buf_len = src_buf.len(); 
         let (k1, k2) = self.generate_cmac_subkeys();
-        let k_n = if (buf_len % 8) == 0 { k1 } else { k2 };
+        let k_n = if (buf.len() % 8) == 0 { k1 } else { k2 };
 
-        let mut output = 0x0_u64;
-        let chunks = src_buf.chunks(8);
-        let last_chunk_index = chunks.clone().count() - 1;
+        let mut block_feedback = 0u64;
 
-        for (index, chunk) in chunks.enumerate() {
+        let mut chunks = buf.chunks(8).peekable();
+        while let Some(chunk) = chunks.next()  {
+
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
 
-            // check for padding
-            let chunk_len = chunk.len();
-            if chunk_len < 8 {
-                // MAC generation procedure: Page 11, Section 4.1.3
-                // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-                // Starting byte of padding mark with 0x80
-                // Other bytes already padded with 0x00 in initialization
-                array_u8[chunk_len] = 0x80_u8;
+            let last_round = chunks.peek().is_none();
+            if last_round {
+                let chunk_len = chunk.len();
+                if chunk_len < 8 {
+                    // Uncomplete chunk, needs padding
+                    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+                    // Page 11, Section 4.1.3
+                    // Padding the remaining bytes:
+                    // 1. Mark the starting byte with 0x80
+                    // 2. Other bytes already padded with 0x00
+                    array_u8[chunk_len] = 0x80_u8;
+                }
             }
 
-            let mut input = u64::from_be_bytes(array_u8);
-            if index > 0 {
-                input ^= output;
-            }
-            if index == last_chunk_index {
-                input ^= k_n;
+            let mut block_in = u64::from_be_bytes(array_u8);
+
+            block_in ^= block_feedback;
+
+            if last_round {
+                block_in ^= k_n;
             }
 
-            output = self.encrypt(input);
+            block_feedback = self.encrypt(block_in);
         }
 
-        let (mac, _) = Magma::u64_split(output);
+        let (mac, _) = Magma::u64_split(block_feedback);
 
         mac
     }
 
-    /// Returns subkeys for CMAC
-    /// Key generation is based on: 
+    /// Returns subkeys for CMAC as `(u64, u64)`
+    /// Key generation algorithm is based on: 
     /// [OMAC1 a.k.a CMAC](https://en.wikipedia.org/wiki/One-key_MAC)
     fn generate_cmac_subkeys(&self) -> (u64, u64){
         let r = self.encrypt(0x0_u64);
@@ -639,7 +660,7 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_decrypt_buffer_ecb() {
+    fn cipher_ecb() {
         let txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
             Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
             Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -649,10 +670,10 @@ mod tests {
         let txt_bytes = txt.as_bytes();
 
         let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.encrypt_buffer(txt_bytes, CipherMode::ECB);
+        let encrypted = magma.cipher(txt_bytes, CipherOperation::Encrypt, CipherMode::ECB);
         assert!(!encrypted.is_empty());
 
-        let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
+        let mut decrypted = magma.cipher(&encrypted,CipherOperation::Decrypt, CipherMode::ECB);
         assert!(decrypted.len() >= encrypted.len());
 
         // remove padding bytes
@@ -725,7 +746,7 @@ mod tests {
     }
 
     #[test]
-    fn generate_mac_gost_r_34_13_2015() {
+    fn cipher_mac_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -738,7 +759,30 @@ mod tests {
         src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
         src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
-        let mac = magma.generate_mac(&src_buf);
+        let mac = magma.cipher_mac(&src_buf);
         assert_eq!(mac, 0x154e7210_u32);
     }
+    #[test]
+    fn cipher_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 40, Section A.2.6
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+
+        let mut src_buf = Vec::<u8>::new();
+        src_buf.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+
+        let mac_vec = magma.cipher(&src_buf, CipherOperation::MessageAuthentication, CipherMode::MAC);
+        assert_eq!(mac_vec.len(), 4);
+
+        let mut array_u8 = [0u8;4];
+        mac_vec.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+        let mac = u32::from_be_bytes(array_u8);
+        assert_eq!(mac, 0x154e7210_u32);
+    }
+
 }

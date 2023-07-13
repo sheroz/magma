@@ -16,11 +16,11 @@
 1. Linux Ubuntu 22.04 LTS / Intel® Core™ i7
 2. MacOS Ventura 13.4 / Apple Macbook Pro M1
 
-## Sample usage
+## Usage
 
-### Please look at [src/bin/sample.rs](src/bin/sample.rs)
+Please look at [src/bin/sample.rs](src/bin/sample.rs)
 
-#### Sample of block encryption
+### Sample of block encryption
 
     let mut magma = Magma::new();
 
@@ -44,7 +44,7 @@ Output:
     Encrypted ciphertext: 4ee901e5c2d8ca3d
     Decrypted block: fedcba9876543210
 
-#### Sample of text encryption in ECB mode
+### Sample of text encryption in ECB mode
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -59,11 +59,13 @@ Output:
     let cipher_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
-    let mut magma = Magma::new_with_key(&cipher_key);
-    let encrypted = magma.encrypt_buffer(source_bytes, CipherMode::ECB);
+
+    let mut magma = Magma::with_key(&cipher_key);
+    
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
+    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::ECB);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());

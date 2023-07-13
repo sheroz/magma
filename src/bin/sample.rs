@@ -1,4 +1,4 @@
-use cipher_magma::{Magma, CipherMode};
+use cipher_magma::{Magma, CipherOperation, CipherMode};
 
 fn main() {
     sample_encrypt_block();
@@ -25,7 +25,7 @@ fn sample_encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
-/// Buffer encryption sample in ECB mode
+/// Buffer encryption/decryption sample in ECB mode
 fn sample_encrypt_text_ecb() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -40,11 +40,13 @@ fn sample_encrypt_text_ecb() {
     let cipher_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
+
     let mut magma = Magma::with_key(&cipher_key);
-    let encrypted = magma.encrypt_buffer(source_bytes, CipherMode::ECB);
+    
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
+    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::ECB);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());
@@ -53,7 +55,7 @@ fn sample_encrypt_text_ecb() {
     println!("Decrypted text:\n{}\n", decrypted_text);
 }
 
-/// MAC generation sample
+/// Message Authentication Code (MAC) sample
 fn sample_generate_mac() {
     let cipher_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
@@ -69,7 +71,7 @@ fn sample_generate_mac() {
     println!("Source buffer:\n{:x?}\n", source_buffer);
 
     let mut magma = Magma::with_key(&cipher_key);
-    let mac = magma.generate_mac(&source_buffer);
+    let mac = magma.cipher_mac(&source_buffer);
     println!("Generated MAC:\n{:x}\n", mac);
 }
 
