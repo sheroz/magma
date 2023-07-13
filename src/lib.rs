@@ -41,7 +41,7 @@ pub enum CipherOperation {
 /// 
 /// * Supported modes: **ECB**, **MAC**
 /// 
-/// * *Not implemented** yet: **CTR**, **OFB**, **СВС**, **CFB**
+/// * Not implemented yet: **CTR**, **OFB**, **СВС**, **CFB**
 /// 
 /// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 pub enum CipherMode {

@@ -46,7 +46,7 @@ Output:
 
 ### Sample of text encryption in Electronic Code Book (ECB) mode
 
-#### (Before using Electronic Code Book (ECB) mode, please make sure that you understand its drawbacks!)
+#### Before using Electronic Code Book (ECB) mode, please make sure that you understand its drawbacks
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
