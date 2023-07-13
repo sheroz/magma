@@ -317,18 +317,18 @@ impl Magma {
     /// Returns the Message Authentication Code (MAC) value
     /// 
     /// # Arguments
-    /// * buf - a slice of `&[u8]` data
+    /// * msg_buf - a slice of `&[u8]` data
     /// 
     /// Implemented according to: 
     /// [MAC generation procedure: Page 26, Section 5.6](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    pub fn cipher_mac(&mut self, buf: &[u8]) -> u32 {
+    pub fn cipher_mac(&mut self, msg_buf: &[u8]) -> u32 {
 
         let (k1, k2) = self.generate_cmac_subkeys();
-        let k_n = if (buf.len() % 8) == 0 { k1 } else { k2 };
+        let k_n = if (msg_buf.len() % 8) == 0 { k1 } else { k2 };
 
         let mut block_feedback = 0u64;
 
-        let mut chunks = buf.chunks(8).peekable();
+        let mut chunks = msg_buf.chunks(8).peekable();
         while let Some(chunk) = chunks.next()  {
 
             let mut array_u8 = [0u8;8];
