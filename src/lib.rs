@@ -689,7 +689,8 @@ mod tests {
 
     #[test]
     fn mac_gost_r_34_13_2015() {
-        // Test vectors
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
 
         let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
@@ -725,7 +726,8 @@ mod tests {
 
     #[test]
     fn generate_mac_gost_r_34_13_2015() {
-        // Test vectors
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
 
         let mut magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
