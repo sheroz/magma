@@ -9,17 +9,18 @@
 
 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
+3. Block Cipher Modes: [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)  
 
 ## Tested on platforms
 
 1. Linux Ubuntu 22.04 LTS / Intel® Core™ i7
 2. MacOS Ventura 13.4 / Apple Macbook Pro M1
 
-## Sample usage
+## Usage
 
-### Please look at [src/bin/sample.rs](src/bin/sample.rs)
+Please look at [src/bin/sample.rs](src/bin/sample.rs)
 
-#### Sample of block encryption
+### Sample of block encryption
 
     let mut magma = Magma::new();
 
@@ -43,7 +44,9 @@ Output:
     Encrypted ciphertext: 4ee901e5c2d8ca3d
     Decrypted block: fedcba9876543210
 
-#### Sample of text encryption in ECB mode
+### Sample of text encryption in Electronic Code Book (ECB) mode
+
+#### (Before using Electronic Code Book (ECB) mode, please make sure that you understand its drawbacks!)
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -58,11 +61,13 @@ Output:
     let cipher_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ];
-    let mut magma = Magma::new_with_key(&cipher_key);
-    let encrypted = magma.encrypt_buffer(source_bytes, CipherMode::ECB);
+
+    let mut magma = Magma::with_key(&cipher_key);
+    
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::ECB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.decrypt_buffer(&encrypted, CipherMode::ECB);
+    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::ECB);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());
@@ -80,3 +85,33 @@ Output:
 
     Decrypted text:
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
+
+### Sample of Message Authentication Code (MAC) generation
+
+    let security_key: [u32;8] = [
+        0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+    ];
+    println!("Security key:\n{:x?}\n", security_key);
+
+    let message = [
+        0x92, 0xde, 0xf0, 0x6b, 0x3c, 0x13, 0x0a, 0x59,
+        0xdb, 0x54, 0xc7, 0x04, 0xf8, 0x18, 0x9d, 0x20,
+        0x4a, 0x98, 0xfb, 0x2e, 0x67, 0xa8, 0x02, 0x4c,
+        0x89, 0x12, 0x40, 0x9b, 0x17, 0xb5, 0x7e, 0x41
+    ];
+    println!("Message:\n{:x?}\n", message);
+
+    let mut magma = Magma::with_key(&security_key);
+    let mac = magma.cipher_mac(&message);
+    println!("Generated MAC:\n{:x}\n", mac);
+
+Output:
+
+    Security key:
+    [ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
+
+    Message:
+    [92, de, f0, 6b, 3c, 13, a, 59, db, 54, c7, 4, f8, 18, 9d, 20, 4a, 98, fb, 2e, 67, a8, 2, 4c, 89, 12, 40, 9b, 17, b5, 7e, 41]
+
+    Generated MAC:
+    154e7210
