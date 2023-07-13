@@ -305,7 +305,7 @@ impl Magma {
     /// [MAC generation procedure: Page 26, Section 5.6](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     pub fn generate_mac(&mut self, src_buf: &[u8]) -> u32 {
 
-        let buf_len =src_buf.len(); 
+        let buf_len = src_buf.len(); 
         let (k1, k2) = self.generate_cmac_subkeys();
         let k_n = if (buf_len % 8) == 0 { k1 } else { k2 };
 
@@ -323,13 +323,13 @@ impl Magma {
                 // MAC generation procedure: Page 11, Section 4.1.3
                 // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
                 // Starting byte of padding mark with 0x80
-                // Following bytes are already padded with 0x00 in initialization
+                // Other bytes already padded with 0x00 in initialization
                 array_u8[chunk_len] = 0x80_u8;
             }
 
             let mut input = u64::from_be_bytes(array_u8);
             if index > 0 {
-                input ^=  output;
+                input ^= output;
             }
             if index == last_chunk_index {
                 input ^= k_n;
@@ -366,7 +366,6 @@ impl Magma {
 
         (k1, k2)
     }
-
 }
 
 #[cfg(test)]
