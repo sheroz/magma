@@ -734,7 +734,6 @@ mod tests {
         src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
         src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
         src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
-        println!("{:#0x?}", src_buf);
 
         let mac = magma.generate_mac(&src_buf);
         assert_eq!(mac, 0x154e7210_u32);
