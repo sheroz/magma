@@ -267,7 +267,7 @@ impl Magma {
     pub fn encrypt_buffer(&mut self, buf: &[u8], cipher_mode: CipherMode) -> Vec<u8> {
         match cipher_mode {
             CipherMode::ECB => self.process_buffer_ecb(buf, Magma::encrypt),
-            _ => panic!("CipherMode::MAC can not be used for encrypting buffer")
+            CipherMode::MAC => panic!("CipherMode::MAC can not be used for encrypting buffer")
         }
     }
     
@@ -280,7 +280,7 @@ impl Magma {
     pub fn decrypt_buffer(&mut self, buf: &[u8], cipher_mode: CipherMode) -> Vec<u8> {
         match cipher_mode {
             CipherMode::ECB => self.process_buffer_ecb(buf, Magma::decrypt),
-            _ => panic!("CipherMode::MAC can not be used for decrypting buffer")
+            CipherMode::MAC => panic!("CipherMode::MAC can not be used for decrypting buffer")
         }
     }
 
@@ -296,24 +296,76 @@ impl Magma {
         result
     }
 
-    pub fn process_buffer_mac(&mut self, src_buf: &[u8]) -> Vec<u8> {
+    /// Returns the Message Authentication Code (MAC) value
+    /// 
+    /// # Arguments
+    /// * src_buf - A slice of `&[u8]` data
+    /// 
+    /// Implemented according to: 
+    /// [MAC generation procedure: Page 26, Section 5.6](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    pub fn generate_mac(&mut self, src_buf: &[u8]) -> u32 {
 
-        // https://lib.itsec.ru/articles2/crypto/gost-standart-strogogo-rezhima
-        // https://en.wikipedia.org/wiki/ISO/IEC_9797-1
+        let buf_len =src_buf.len(); 
+        let (k1, k2) = self.generate_cmac_subkeys();
+        let k_n = if (buf_len % 8) == 0 { k1 } else { k2 };
 
-        let mut result = Vec::<u8>::with_capacity(src_buf.len());
-        for chunk in src_buf.chunks(8) {
+        let mut output = 0x0_u64;
+        let chunks = src_buf.chunks(8);
+        let last_chunk_index = chunks.clone().count() - 1;
+
+        for (index, chunk) in chunks.enumerate() {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block_u64 = u64::from_be_bytes(array_u8);
 
-            let result_u64 = 0_u64;
+            // check for padding
+            let chunk_len = chunk.len();
+            if chunk_len < 8 {
+                // MAC generation procedure: Page 11, Section 4.1.3
+                // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+                // Starting byte of padding mark with 0x80
+                // Following bytes are already padded with 0x00 in initialization
+                array_u8[chunk_len] = 0x80_u8;
+            }
 
-            result.extend_from_slice(&result_u64.to_be_bytes());
+            let mut input = u64::from_be_bytes(array_u8);
+            if index > 0 {
+                input ^=  output;
+            }
+            if index == last_chunk_index {
+                input ^= k_n;
+            }
+
+            output = self.encrypt(input);
         }
-        result
+
+        let (mac, _) = Magma::u64_split(output);
+
+        mac
     }
 
+    /// Returns subkeys for CMAC
+    /// Key generation is based on: 
+    /// [OMAC1 a.k.a CMAC](https://en.wikipedia.org/wiki/One-key_MAC)
+    fn generate_cmac_subkeys(&self) -> (u64, u64){
+        let r = self.encrypt(0x0_u64);
+
+        let b64 = 0x1b_u64;
+        let mcb_u64 = 0x80000000_00000000_u64;
+
+        let k1 = if (r & mcb_u64) == 0 {
+            r << 1
+        } else {
+            (r << 1) ^ b64
+        };
+
+        let k2 = if (k1 & mcb_u64) == 0 {
+            k1 << 1
+        } else {
+            (k1 << 1) ^ b64
+        };
+
+        (k1, k2)
+    }
 
 }
 
@@ -628,23 +680,26 @@ mod tests {
         assert_eq!(magma.decrypt(ENCRYPTED3_GOST_R3413_2015), PLAINTEXT3_GOST_R3413_2015);
         assert_eq!(magma.decrypt(ENCRYPTED4_GOST_R3413_2015), PLAINTEXT4_GOST_R3413_2015);
     }
+    #[test]
+    fn cmac_subkeys_gost_r_34_13_2015() {
+        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+        let (k1, k2) = magma.generate_cmac_subkeys();
+        assert_eq!(k1, 0x5f459b3342521424_u64);
+        assert_eq!(k2, 0xbe8b366684a42848_u64);
+    }
 
     #[test]
-    fn gost_r_34_13_2015_mac() {
+    fn mac_gost_r_34_13_2015() {
         // Test vectors
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 35, Sections: A.2, A.2.6
-
-        /*
-            R = 2fa2cd99a1290a12,
-            MSB1(R) = 0, K1= R≪ 1 = 5f459b3342521424,
-            MSB1(K1) = 0, следовательно K2 = K1≪ 1= be8b366684a42848,
-            |P4| = n, K1* = K1
-            
-            s = 32
-         */
+        // Page 40, Section A.2.6
 
         let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+
+        let (k1, k2) = magma.generate_cmac_subkeys();
+        assert_eq!(k1, 0x5f459b3342521424_u64);
+        assert_eq!(k2, 0xbe8b366684a42848_u64);
+
+        let k_n = k1;
 
         let i1 = PLAINTEXT1_GOST_R3413_2015;
         let o1 = magma.encrypt(i1);
@@ -660,11 +715,28 @@ mod tests {
         let o3 = magma.encrypt(i3);
         assert_eq!(o3, 0xf739b18d34289b00_u64);
 
-        let i4 = 0x216e6a2561cff165_u64;
-        let o4 = 0x154e72102030c5bb_u64;
-        
-        let mac = 0x154e7210_u32;
+        let i4 = o3 ^ PLAINTEXT4_GOST_R3413_2015 ^ k_n;
+        assert_eq!(i4, 0x216e6a2561cff165_u64);
+        let o4 = magma.encrypt(i4);
+        assert_eq!(o4, 0x154e72102030c5bb_u64);
+
+        let (mac, _) = Magma::u64_split(o4);
+        assert_eq!(mac, 0x154e7210_u32);
 
     }
 
+    #[test]
+    fn generate_mac_gost_r_34_13_2015() {
+        let mut magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+
+        let mut src_buf = Vec::<u8>::new();
+        src_buf.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+        println!("{:#0x?}", src_buf);
+
+        let mac = magma.generate_mac(&src_buf);
+        assert_eq!(mac, 0x154e7210_u32);
+    }
 }
