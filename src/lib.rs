@@ -48,10 +48,10 @@ pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode
     ECB, 
 
-    /*
     /// Counter Encryption (CTR) Mode
     CTR, 
 
+    /*
     /// Output Feedback (OFB) Mode
     OFB,
 
@@ -282,12 +282,14 @@ impl Magma {
             CipherOperation::Encrypt => {
                 match cipher_mode {
                     CipherMode::ECB => self.cipher_ecb(buf, Magma::encrypt),
+                    CipherMode::CTR => self.cipher_ctr(buf, Magma::encrypt),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in encrypting operation!")
                 }
             },
             CipherOperation::Decrypt => {
                 match cipher_mode {
                     CipherMode::ECB => self.cipher_ecb(buf, Magma::decrypt),
+                    CipherMode::CTR => self.cipher_ctr(buf, Magma::decrypt),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in decrypting operation!")
                 }
             },
@@ -302,6 +304,13 @@ impl Magma {
         }
     }
 
+    /// Returns encrypted/decrypted result as `Vec<u8>`
+    /// 
+    /// Uses Electronic Codebook (ECB) Mode
+    /// 
+    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// 
+    /// Page 13, Section 5.1
     fn cipher_ecb(&mut self, buf: &[u8], m_invoke: fn(&Magma, u64) -> u64) -> Vec<u8> {
         let mut result = Vec::<u8>::with_capacity(buf.len());
         for chunk in buf.chunks(8) {
@@ -314,13 +323,26 @@ impl Magma {
         result
     }
 
+    /// Returns encrypted/decrypted result as `Vec<u8>`
+    /// 
+    /// Uses Counter Encryption (CTR) Mode
+    /// 
+    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// 
+    /// Page 14, Section 5.2
+    fn cipher_ctr(&mut self, buf: &[u8], m_invoke: fn(&Magma, u64) -> u64) -> Vec<u8> {
+        let mut result = Vec::<u8>::with_capacity(buf.len());
+        result
+    }
+
     /// Returns the Message Authentication Code (MAC) value
     /// 
     /// # Arguments
     /// * msg_buf - a slice of `&[u8]` data
     /// 
-    /// Implemented according to: 
-    /// [MAC generation procedure: Page 26, Section 5.6](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// 
+    /// Page 26, Section 5.6
     pub fn cipher_mac(&mut self, msg_buf: &[u8]) -> u32 {
 
         let (k1, k2) = self.generate_cmac_subkeys();
@@ -386,6 +408,11 @@ impl Magma {
         };
 
         (k1, k2)
+    }
+
+    #[inline]
+    pub fn addition_in_ring(a: u64, b: u64) -> u64 {
+        a + b
     }
 }
 
@@ -660,7 +687,48 @@ mod tests {
     }
 
     #[test]
-    fn cipher_ecb() {
+    fn encrypt_gost_r_34_13_2015_ecb() {
+        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT1_GOST_R3413_2015), ENCRYPTED1_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT2_GOST_R3413_2015), ENCRYPTED2_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT3_GOST_R3413_2015), ENCRYPTED3_GOST_R3413_2015);
+        assert_eq!(magma.encrypt(PLAINTEXT4_GOST_R3413_2015), ENCRYPTED4_GOST_R3413_2015);
+    }
+
+    #[test]
+    fn decrypt_gost_r_34_13_2015_ecb() {
+        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED1_GOST_R3413_2015), PLAINTEXT1_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED2_GOST_R3413_2015), PLAINTEXT2_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED3_GOST_R3413_2015), PLAINTEXT3_GOST_R3413_2015);
+        assert_eq!(magma.decrypt(ENCRYPTED4_GOST_R3413_2015), PLAINTEXT4_GOST_R3413_2015);
+    }
+
+    #[test]
+    fn cipher_ecb_gost_r_34_13_2015() {
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::ECB);
+        assert!(!encrypted.is_empty());
+
+        let mut expected = Vec::<u8>::new();
+        expected.extend_from_slice(&ENCRYPTED1_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED2_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED3_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED4_GOST_R3413_2015.to_be_bytes());
+        assert_eq!(encrypted, expected);
+
+        let decrypted = magma.cipher(&encrypted,CipherOperation::Decrypt, CipherMode::ECB);
+        assert_eq!(decrypted, source);
+    }
+
+    #[test]
+    fn cipher_text_ecb() {
         let txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
             Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
             Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -684,23 +752,6 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_gost_r_34_13_2015_ecb() {
-        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
-        assert_eq!(magma.encrypt(PLAINTEXT1_GOST_R3413_2015), ENCRYPTED1_GOST_R3413_2015);
-        assert_eq!(magma.encrypt(PLAINTEXT2_GOST_R3413_2015), ENCRYPTED2_GOST_R3413_2015);
-        assert_eq!(magma.encrypt(PLAINTEXT3_GOST_R3413_2015), ENCRYPTED3_GOST_R3413_2015);
-        assert_eq!(magma.encrypt(PLAINTEXT4_GOST_R3413_2015), ENCRYPTED4_GOST_R3413_2015);
-    }
-
-    #[test]
-    fn decrypt_gost_r_34_13_2015_ecb() {
-        let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
-        assert_eq!(magma.decrypt(ENCRYPTED1_GOST_R3413_2015), PLAINTEXT1_GOST_R3413_2015);
-        assert_eq!(magma.decrypt(ENCRYPTED2_GOST_R3413_2015), PLAINTEXT2_GOST_R3413_2015);
-        assert_eq!(magma.decrypt(ENCRYPTED3_GOST_R3413_2015), PLAINTEXT3_GOST_R3413_2015);
-        assert_eq!(magma.decrypt(ENCRYPTED4_GOST_R3413_2015), PLAINTEXT4_GOST_R3413_2015);
-    }
-    #[test]
     fn cmac_subkeys_gost_r_34_13_2015() {
         let magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
         let (k1, k2) = magma.generate_cmac_subkeys();
@@ -709,7 +760,7 @@ mod tests {
     }
 
     #[test]
-    fn mac_gost_r_34_13_2015() {
+    fn mac_raw_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -746,7 +797,7 @@ mod tests {
     }
 
     #[test]
-    fn cipher_mac_gost_r_34_13_2015() {
+    fn cipher_mac_raw_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -762,8 +813,9 @@ mod tests {
         let mac = magma.cipher_mac(&src_buf);
         assert_eq!(mac, 0x154e7210_u32);
     }
+
     #[test]
-    fn cipher_gost_r_34_13_2015() {
+    fn cipher_mac_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -785,4 +837,113 @@ mod tests {
         assert_eq!(mac, 0x154e7210_u32);
     }
 
+    #[test]
+    fn ctr_raw_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 36, Section A.2.2
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+
+        let iv = 0x12345678_u32;
+        let iv_u64 = (iv as u64 ) << 32;
+
+        let mut pass_number = 0;
+        let p1 = PLAINTEXT1_GOST_R3413_2015;
+
+        let i1 = Magma::addition_in_ring(iv_u64, pass_number);
+        assert_eq!(i1, 0x1234567800000000_u64);
+
+        let o1 = magma.encrypt(i1);
+        assert_eq!(o1, 0xdc46e167aba4b365_u64);
+
+        let c1 = p1 ^ o1;
+        assert_eq!(c1, 0x4e98110c97b7b93c_u64);
+
+        pass_number += 1;
+        let p2 = PLAINTEXT2_GOST_R3413_2015;
+
+        let i2 = Magma::addition_in_ring(iv_u64, pass_number);
+        assert_eq!(i2, 0x1234567800000001_u64);
+
+        let o2 = magma.encrypt(i2);
+        assert_eq!(o2, 0xe571ca972ef0c049_u64);
+
+        let c2 = p2 ^ o2;
+        assert_eq!(c2, 0x3e250d93d6e85d69_u64);
+
+        pass_number += 1;
+        let p3 = PLAINTEXT3_GOST_R3413_2015;
+
+        let i3 = Magma::addition_in_ring(iv_u64, pass_number);
+        assert_eq!(i3, 0x1234567800000002_u64);
+
+        let o3 = magma.encrypt(i3);
+        assert_eq!(o3, 0x59f57da6601ad9a3_u64);
+
+        let c3 = p3 ^ o3;
+        assert_eq!(c3, 0x136d868807b2dbef_u64);
+
+        pass_number += 1;
+        let p4 = PLAINTEXT4_GOST_R3413_2015;
+
+        let i4 = Magma::addition_in_ring(iv_u64, pass_number);
+        assert_eq!(i4, 0x1234567800000003_u64);
+
+        let o4 = magma.encrypt(i4);
+        assert_eq!(o4, 0xdf9cf61bbce7df6c_u64);
+
+        let c4 = p4 ^ o4;
+        assert_eq!(c4, 0x568eb680ab52a12d_u64);
+
+    }
+
+    #[test]
+    fn cipher_ctr_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 36, Section A.2.2
+
+        let iv = 0x12345678_u32;
+
+        let p1 = 0x92def06b3c130a59_u64;
+        let i1 = 0x1234567800000000_u64;
+        let o1 = 0xdc46e167aba4b365_u64;
+        let c1 = 0x4e98110c97b7b93c_u64;
+
+        let p2 = 0xdb54c704f8189d20_u64;
+        let i2 = 0x1234567800000001_u64;
+        let o2 = 0xe571ca972ef0c049_u64;
+        let c2 = 0x3e250d93d6e85d69_u64;
+
+        let p3 = 0x4a98fb2e67a8024c_u64;
+        let i3 = 0x1234567800000002_u64;
+        let o3 = 0x59f57da6601ad9a3_u64;
+        let c3 = 0x136d868807b2dbef_u64;
+
+        let p4 = 0x8912409b17b57e41_u64;
+        let i4 = 0x1234567800000003_u64;
+        let o4 = 0xdf9cf61bbce7df6c_u64;
+        let c4 = 0x568eb680ab52a12d_u64;
+
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::CTR);
+        assert!(!encrypted.is_empty());
+
+        let mut expected = Vec::<u8>::new();
+        expected.extend_from_slice(&ENCRYPTED1_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED2_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED3_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED4_GOST_R3413_2015.to_be_bytes());
+        assert_eq!(encrypted, expected);
+
+        let decrypted = magma.cipher(&encrypted,CipherOperation::Decrypt, CipherMode::CTR);
+        assert_eq!(decrypted, source);
+    }
 }
