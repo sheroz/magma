@@ -722,11 +722,13 @@ mod tests {
 
         let (mac, _) = Magma::u64_split(o4);
         assert_eq!(mac, 0x154e7210_u32);
-
     }
 
     #[test]
     fn generate_mac_gost_r_34_13_2015() {
+        // Test vectors
+        // Page 40, Section A.2.6
+
         let mut magma = Magma::with_key(&CIPHER_KEY_GOST_R3413_2015);
 
         let mut src_buf = Vec::<u8>::new();
