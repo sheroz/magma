@@ -39,7 +39,7 @@ pub enum CipherOperation {
 
 /// **Cipher mode**
 /// 
-/// * Supported Cipher Modes: **ECB**, **MAC**, **CTR**, **CTR_ACPKM**
+/// * Supported Cipher Modes: **ECB**, **CTR**, **CTR-ACPKM**, **MAC**
 /// 
 /// * Not implemented yet: **OFB**, **СВС**, **CFB**
 /// 
@@ -52,7 +52,7 @@ pub enum CipherMode {
     /// Counter Encryption (CTR) Mode
     CTR, 
 
-    /// Counter Encryption (CTR_ACPKM) Mode
+    /// Counter Encryption (CTR-ACPKM) Mode
     CTR_ACPKM,
 
     /*
