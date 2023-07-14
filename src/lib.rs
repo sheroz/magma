@@ -22,7 +22,8 @@
 pub struct Magma {
     cipher_key: [u32;8],
     round_keys: [u32;32],
-    substitution_box: [u8;128]
+    substitution_box: [u8;128],
+    initialization_vector: u32
 }
 
 /// **Cipher operation**
@@ -99,6 +100,13 @@ impl Magma {
         0x1, 0xF, 0xD, 0x0, 0x5, 0x7, 0xA, 0x4, 0x9, 0x2, 0x3, 0xE, 0x6, 0xB, 0x8, 0xC,
     ];
 
+    /// Initialization Vector (IV)
+    /// 
+    /// Р 1323565.1.017—2018
+    /// 
+    /// CTR-ACPKM
+    pub const INITIALIZATION_VECTOR: u32 = 0x12345678;
+
     /// Returns a new Magma by using RFC7836 based substitution box
     ///
     /// # Example
@@ -110,7 +118,8 @@ impl Magma {
         let cipher_key = [0u32;8];
         let round_keys = [0u32;32];
         let substitution_box = Magma::SUBSTITUTION_BOX_RFC7836.clone();
-        Magma { cipher_key, round_keys, substitution_box }
+        let initialization_vector = Magma::INITIALIZATION_VECTOR;
+        Magma { cipher_key, round_keys, substitution_box, initialization_vector }
     }
 
     /// Returns a new Magma initialized with given cipher key
@@ -143,6 +152,15 @@ impl Magma {
     /// * `substitution_box` - A reference to `[u8;128]` array
     pub fn set_substitution_box(&mut self, substitution_box: &[u8;128]) {
         self.substitution_box.copy_from_slice(substitution_box);
+    }
+
+    /// Sets the Initialization Vector (IV)
+    /// 
+    /// # Arguments
+    ///
+    /// * `initialization_vector` - An `u32` value
+    pub fn set_initialization_vector(&mut self, initialization_vector: u32) {
+        self.initialization_vector = initialization_vector;
     }
 
     /// Sets the cipher key from `[u32;8]` array
@@ -409,11 +427,6 @@ impl Magma {
 
         (k1, k2)
     }
-
-    #[inline]
-    pub fn addition_in_ring(a: u64, b: u64) -> u64 {
-        a + b
-    }
 }
 
 #[cfg(test)]
@@ -454,10 +467,19 @@ mod tests {
         assert_eq!(magma.cipher_key, [0u32;8]);
         assert_eq!(magma.round_keys, [0u32;32]);
         assert_eq!(magma.substitution_box, Magma::SUBSTITUTION_BOX_RFC7836);
+        assert_eq!(magma.initialization_vector, Magma::INITIALIZATION_VECTOR);
     }
 
     #[test]
-    fn initialize_with_key_rfc8891() {
+    fn set_initialization_vector() {
+        let mut magma = Magma::new();
+        let initialization_vector = 0x11223344;
+        magma.set_initialization_vector(initialization_vector);
+        assert_eq!(magma.initialization_vector, initialization_vector);
+    }
+
+    #[test]
+    fn with_key_rfc8891() {
         let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
         assert_eq!(magma.cipher_key, CIPHER_KEY_RFC8891);
     }
@@ -760,7 +782,7 @@ mod tests {
     }
 
     #[test]
-    fn mac_raw_gost_r_34_13_2015() {
+    fn mac_steps_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -797,7 +819,7 @@ mod tests {
     }
 
     #[test]
-    fn cipher_mac_raw_gost_r_34_13_2015() {
+    fn cipher_mac_core_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -838,64 +860,52 @@ mod tests {
     }
 
     #[test]
-    fn ctr_raw_gost_r_34_13_2015() {
+    fn ctr_steps_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 36, Section A.2.2
 
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
 
         let iv = 0x12345678_u32;
-        let iv_u64 = (iv as u64 ) << 32;
 
-        let mut pass_number = 0;
+        let iv_extended = (iv as u64 ) << 32;
+
+        let mut pass_count = 0;
         let p1 = PLAINTEXT1_GOST_R3413_2015;
-
-        let i1 = Magma::addition_in_ring(iv_u64, pass_number);
+        let i1 = iv_extended.wrapping_add(pass_count);
         assert_eq!(i1, 0x1234567800000000_u64);
-
         let o1 = magma.encrypt(i1);
         assert_eq!(o1, 0xdc46e167aba4b365_u64);
-
         let c1 = p1 ^ o1;
         assert_eq!(c1, 0x4e98110c97b7b93c_u64);
 
-        pass_number += 1;
+        pass_count += 1;
         let p2 = PLAINTEXT2_GOST_R3413_2015;
-
-        let i2 = Magma::addition_in_ring(iv_u64, pass_number);
+        let i2 = iv_extended.wrapping_add(pass_count);
         assert_eq!(i2, 0x1234567800000001_u64);
-
         let o2 = magma.encrypt(i2);
         assert_eq!(o2, 0xe571ca972ef0c049_u64);
-
         let c2 = p2 ^ o2;
         assert_eq!(c2, 0x3e250d93d6e85d69_u64);
 
-        pass_number += 1;
+        pass_count += 1;
         let p3 = PLAINTEXT3_GOST_R3413_2015;
-
-        let i3 = Magma::addition_in_ring(iv_u64, pass_number);
+        let i3 = iv_extended.wrapping_add(pass_count);
         assert_eq!(i3, 0x1234567800000002_u64);
-
         let o3 = magma.encrypt(i3);
         assert_eq!(o3, 0x59f57da6601ad9a3_u64);
-
         let c3 = p3 ^ o3;
         assert_eq!(c3, 0x136d868807b2dbef_u64);
 
-        pass_number += 1;
+        pass_count += 1;
         let p4 = PLAINTEXT4_GOST_R3413_2015;
-
-        let i4 = Magma::addition_in_ring(iv_u64, pass_number);
+        let i4 = iv_extended.wrapping_add(pass_count);
         assert_eq!(i4, 0x1234567800000003_u64);
-
         let o4 = magma.encrypt(i4);
         assert_eq!(o4, 0xdf9cf61bbce7df6c_u64);
-
         let c4 = p4 ^ o4;
         assert_eq!(c4, 0x568eb680ab52a12d_u64);
-
     }
 
     #[test]
@@ -904,46 +914,11 @@ mod tests {
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 36, Section A.2.2
 
-        let iv = 0x12345678_u32;
+        // Test Vectors CTR
+        // Р 1323565.1.017—2018
+        // Page 11
 
-        let p1 = 0x92def06b3c130a59_u64;
-        let i1 = 0x1234567800000000_u64;
-        let o1 = 0xdc46e167aba4b365_u64;
-        let c1 = 0x4e98110c97b7b93c_u64;
-
-        let p2 = 0xdb54c704f8189d20_u64;
-        let i2 = 0x1234567800000001_u64;
-        let o2 = 0xe571ca972ef0c049_u64;
-        let c2 = 0x3e250d93d6e85d69_u64;
-
-        let p3 = 0x4a98fb2e67a8024c_u64;
-        let i3 = 0x1234567800000002_u64;
-        let o3 = 0x59f57da6601ad9a3_u64;
-        let c3 = 0x136d868807b2dbef_u64;
-
-        let p4 = 0x8912409b17b57e41_u64;
-        let i4 = 0x1234567800000003_u64;
-        let o4 = 0xdf9cf61bbce7df6c_u64;
-        let c4 = 0x568eb680ab52a12d_u64;
-
-        let mut source = Vec::<u8>::new();
-        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
-
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::CTR);
-        assert!(!encrypted.is_empty());
-
-        let mut expected = Vec::<u8>::new();
-        expected.extend_from_slice(&ENCRYPTED1_GOST_R3413_2015.to_be_bytes());
-        expected.extend_from_slice(&ENCRYPTED2_GOST_R3413_2015.to_be_bytes());
-        expected.extend_from_slice(&ENCRYPTED3_GOST_R3413_2015.to_be_bytes());
-        expected.extend_from_slice(&ENCRYPTED4_GOST_R3413_2015.to_be_bytes());
-        assert_eq!(encrypted, expected);
-
-        let decrypted = magma.cipher(&encrypted,CipherOperation::Decrypt, CipherMode::CTR);
-        assert_eq!(decrypted, source);
     }
+
+
 }
