@@ -11,7 +11,7 @@ fn main() {
     sample_generate_mac();
 }
 
-/// Block encryption sample
+/// Sample of block encryption 
 fn sample_encrypt_block() {
     let mut magma = Magma::new();
 
@@ -30,7 +30,7 @@ fn sample_encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
-/// Text encryption sample in OFB mode
+/// Sample of text encryption sample in Output Feedback (OFB) mode
 fn sample_encrypt_text_ofb() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -51,7 +51,7 @@ fn sample_encrypt_text_ofb() {
     let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
+    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);

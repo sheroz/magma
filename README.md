@@ -69,7 +69,7 @@ Output:
     let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
+    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
