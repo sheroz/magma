@@ -30,7 +30,7 @@ fn sample_encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
-/// Sample of text encryption sample in Output Feedback (OFB) mode
+/// Sample of text encryption in Output Feedback (OFB) mode
 fn sample_encrypt_text_ofb() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -57,7 +57,7 @@ fn sample_encrypt_text_ofb() {
     println!("Decrypted text:\n{}\n", decrypted_text);
 }
 
-/// Message Authentication Code (MAC) sample
+/// Sample of Message Authentication Code (MAC) generation
 fn sample_generate_mac() {
     let security_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
