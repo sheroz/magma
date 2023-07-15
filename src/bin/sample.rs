@@ -4,8 +4,8 @@ fn main() {
     println!("\n***\n\nSample of block encryption:");
     sample_encrypt_block();
 
-    println!("\n***\n\nSample of text encryption in ECB mode:");
-    sample_encrypt_text_ecb(); 
+    println!("\n***\n\nSample of text encryption in OFB mode:");
+    sample_encrypt_text_ofb(); 
 
     println!("\n***\n\nSample of Message Authentication Code (MAC) generation:");
     sample_generate_mac();
@@ -30,8 +30,8 @@ fn sample_encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
-/// Text encryption sample in ECB mode
-fn sample_encrypt_text_ecb() {
+/// Text encryption sample in OFB mode
+fn sample_encrypt_text_ofb() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
         Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -48,13 +48,10 @@ fn sample_encrypt_text_ecb() {
 
     let mut magma = Magma::with_key(&cipher_key);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ecb);
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ecb);
-
-    // remove padding bytes
-    decrypted.truncate(source_bytes.len());
+    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
@@ -96,7 +93,7 @@ mod tests {
 
     #[test]
     fn sample_encrypt_text_ecb_test() {
-        sample_encrypt_text_ecb();
+        sample_encrypt_text_ofb();
     }
 
     #[test]

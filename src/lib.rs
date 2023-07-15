@@ -447,17 +447,20 @@ impl Magma {
     /// Page 16, Section 5.3
     fn cipher_ofb(&mut self, buf: &[u8]) -> Vec<u8> {
         let mut result = Vec::<u8>::with_capacity(buf.len());
-        let iv_extended = self.prepare_initialization_vector_ctr(self.initialization_vector);
+        let mut register_r = ((self.initialization_vector >> 64) as u64, self.initialization_vector as u64);
 
-        for (chunk_index, chunk) in buf.chunks(8).enumerate() {
+        for chunk in buf.chunks(8) {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block = u64::from_be_bytes(array_u8);
 
-            let ctr = iv_extended.wrapping_add(chunk_index as u64);
-            let output = self.encrypt(ctr) ^ block;
+            let ofb = self.encrypt(register_r.0);
+            let output = ofb ^ block;
 
-            result.extend_from_slice(&output.to_be_bytes());
+            register_r.0 = register_r.1;
+            register_r.1 = ofb;
+
+            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
         }
 
         result
@@ -1100,10 +1103,6 @@ mod tests {
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 37, Section A.2.3
 
-        /*
-        s = n = 64, m = 2n = 128,
-        */
-
         let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
 
         let iv = Magma::IV_GOST_R3413_2015;
@@ -1151,4 +1150,33 @@ mod tests {
         let c4 = p4 ^ o4;
         assert_eq!(c4, ENCRYPTED4_OFB_GOST_R3413_2015);
     }
+
+    #[test]
+    fn cipher_ofb_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 37, Section A.2.3
+
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::Ofb);
+        assert!(!encrypted.is_empty());
+
+        let mut expected = Vec::<u8>::new();
+        expected.extend_from_slice(&ENCRYPTED1_OFB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED2_OFB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED3_OFB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED4_OFB_GOST_R3413_2015.to_be_bytes());
+        assert_eq!(encrypted, expected);
+
+        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
+        assert_eq!(decrypted, source);
+
+    }
+
 }
