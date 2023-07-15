@@ -22,7 +22,7 @@ pub struct Magma {
     cipher_key: [u32;8],
     round_keys: [u32;32],
     substitution_box: [u8;128],
-    initialization_vector: u32,
+    initialization_vector: u128,
 }
 
 /// **Cipher operation**
@@ -104,11 +104,11 @@ impl Magma {
     ];
 
     /// Initialization Vector (IV)
-    /// 
-    /// Р 1323565.1.017—2018
-    /// 
-    /// CTR-ACPKM
-    pub const INITIALIZATION_VECTOR: u32 = 0x12345678;
+    ///  
+    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// CTR Mode: Page 36, Section A.2.2, uses only the MSB(32) part of IV
+    /// OFB Mode: Page 37, Section A.2.3
+    pub const IV_GOST_R3413_2015: u128 = 0x1234567890abcdef234567890abcdef1;
 
     /// Р 1323565.1.017—2018
     /// 
@@ -138,7 +138,7 @@ impl Magma {
         let cipher_key = [0u32;8];
         let round_keys = [0u32;32];
         let substitution_box = Magma::SUBSTITUTION_BOX_RFC7836.clone();
-        let initialization_vector = Magma::INITIALIZATION_VECTOR;
+        let initialization_vector = Magma::IV_GOST_R3413_2015;
         Magma { cipher_key, round_keys, substitution_box, initialization_vector }
     }
 
@@ -178,14 +178,17 @@ impl Magma {
     /// 
     /// # Arguments
     ///
-    /// * `initialization_vector` - An `u32` value
-    pub fn set_initialization_vector(&mut self, initialization_vector: u32) {
+    /// * `initialization_vector` - An `u128` value
+    /// 
+    /// **Attention**: `CTR` Mode uses only the MSB(32) part of IV
+    pub fn set_initialization_vector(&mut self, initialization_vector: u128) {
         self.initialization_vector = initialization_vector;
     }
 
     #[inline]
-    fn extend_initialization_vector_ctr(&self, initialization_vector: u32) -> u64 {
-        (initialization_vector as u64 ) << 32
+    fn prepare_initialization_vector_ctr(&self, initialization_vector: u128) -> u64 {
+        // Magma in CTR mode uses the IV MSB(32) extended to 64bit with Initial Nonce
+        ((initialization_vector >> 64) & 0xffffffff_00000000) as u64
     }
 
     /// Sets the cipher key from `[u32;8]` array
@@ -379,14 +382,14 @@ impl Magma {
     /// Page 14, Section 5.2
     fn cipher_ctr(&mut self, buf: &[u8]) -> Vec<u8> {
         let mut result = Vec::<u8>::with_capacity(buf.len());
-        let iv_extended = self.extend_initialization_vector_ctr(self.initialization_vector);
+        let iv_ctr = self.prepare_initialization_vector_ctr(self.initialization_vector);
 
         for (chunk_index, chunk) in buf.chunks(8).enumerate() {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block = u64::from_be_bytes(array_u8);
 
-            let ctr = iv_extended.wrapping_add(chunk_index as u64);
+            let ctr = iv_ctr.wrapping_add(chunk_index as u64);
             let output = self.encrypt(ctr) ^ block;
 
             result.extend_from_slice(&output.to_be_bytes());
@@ -406,7 +409,7 @@ impl Magma {
         let mut result = Vec::<u8>::with_capacity(buf.len());
 
         let original_key = self.cipher_key;
-        let iv_extended = self.extend_initialization_vector_ctr(self.initialization_vector);
+        let iv_ctr = self.prepare_initialization_vector_ctr(self.initialization_vector);
         let mut section_bits_processed = 0;
 
         for (chunk_index, chunk) in buf.chunks(8).enumerate() {
@@ -414,7 +417,7 @@ impl Magma {
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block = u64::from_be_bytes(array_u8);
 
-            let ctr = iv_extended.wrapping_add(chunk_index as u64);
+            let ctr = iv_ctr.wrapping_add(chunk_index as u64);
 
             let gamma = self.encrypt(ctr);
             let output = gamma ^ block;
@@ -444,7 +447,7 @@ impl Magma {
     /// Page 16, Section 5.3
     fn cipher_ofb(&mut self, buf: &[u8]) -> Vec<u8> {
         let mut result = Vec::<u8>::with_capacity(buf.len());
-        let iv_extended = self.extend_initialization_vector_ctr(self.initialization_vector);
+        let iv_extended = self.prepare_initialization_vector_ctr(self.initialization_vector);
 
         for (chunk_index, chunk) in buf.chunks(8).enumerate() {
             let mut array_u8 = [0u8;8];
@@ -565,11 +568,19 @@ mod tests {
     // Encrypting in CTR Mode
     // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
     // Page 36, Section A.2.2
-
     const ENCRYPTED1_CTR_GOST_R3413_2015: u64 = 0x4e98110c97b7b93c_u64;
     const ENCRYPTED2_CTR_GOST_R3413_2015: u64 = 0x3e250d93d6e85d69_u64;
     const ENCRYPTED3_CTR_GOST_R3413_2015: u64 = 0x136d868807b2dbef_u64;
-    const ENCRYPTED4_CTR_GOST_R3413_2015: u64 = 0x568eb680ab52a12d_u64;            
+    const ENCRYPTED4_CTR_GOST_R3413_2015: u64 = 0x568eb680ab52a12d_u64;      
+
+    // Test vectors GOST R 34.13-2015
+    // Encrypting in OFB Mode
+    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+    // Page 29, Section A.2.3
+    const ENCRYPTED1_OFB_GOST_R3413_2015: u64 = 0xdb37e0e266903c83_u64;
+    const ENCRYPTED2_OFB_GOST_R3413_2015: u64 = 0x0d46644c1f9a089c_u64;
+    const ENCRYPTED3_OFB_GOST_R3413_2015: u64 = 0xa0f83062430e327e_u64;        
+    const ENCRYPTED4_OFB_GOST_R3413_2015: u64 = 0xc824efb8bd4fdb05_u64;
 
     #[test]
     fn default_initialization() {
@@ -577,7 +588,7 @@ mod tests {
         assert_eq!(magma.cipher_key, [0u32;8]);
         assert_eq!(magma.round_keys, [0u32;32]);
         assert_eq!(magma.substitution_box, Magma::SUBSTITUTION_BOX_RFC7836);
-        assert_eq!(magma.initialization_vector, Magma::INITIALIZATION_VECTOR);
+        assert_eq!(magma.initialization_vector, Magma::IV_GOST_R3413_2015);
     }
 
     #[test]
@@ -1093,68 +1104,51 @@ mod tests {
         s = n = 64, m = 2n = 128,
         */
 
-        let iv = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
-
-        let p1 = 0x92def06b3c130a59_u64;
-        let i1 = 0x1234567890abcdef_u64;
-        let o1 = 0x49e910895a8336da_u64;
-        let c1 = 0xdb37e0e266903c83_u64;
-
-        let p2 = 0xdb54c704f8189d20_u64;
-        let i2 = 0x234567890abcdef1_u64;
-        let o2 = 0xd612a348e78295bc_u64;
-        let c2 = 0x0d46644c1f9a089c_u64;
-
-        let p3 = 0x4a98fb2e67a8024c_u64;
-        let i3 = 0x49e910895a8336da_u64;
-        let o3 = 0xea60cb4c24a63032_u64;
-        let c3 = 0xa0f83062430e327e_u64;        
-
-        let p4 = 0x8912409b17b57e41_u64;
-        let i4 = 0xd612a348e78295bc_u64;
-        let o4 = 0x4136af23aafaa544_u64;
-        let c4 = 0xc824efb8bd4fdb05_u64;
-
         let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
 
-        let iv = 0x12345678_u32;
+        let iv = Magma::IV_GOST_R3413_2015;
 
-        let iv_extended = (iv as u64 ) << 32;
+        let mut r = ((iv >> 64) as u64, iv as u64);
 
-        let mut pass_count = 0;
         let p1 = PLAINTEXT1_GOST_R3413_2015;
-        let i1 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i1, 0x1234567800000000_u64);
+        let i1 = r.0;
+        assert_eq!(i1, 0x1234567890abcdef_u64); 
         let o1 = magma.encrypt(i1);
-        assert_eq!(o1, 0xdc46e167aba4b365_u64);
+        assert_eq!(o1, 0x49e910895a8336da_u64); 
         let c1 = p1 ^ o1;
-        assert_eq!(c1, ENCRYPTED1_CTR_GOST_R3413_2015);
+        assert_eq!(c1, ENCRYPTED1_OFB_GOST_R3413_2015);
 
-        pass_count += 1;
+        r.0 = r.1;
+        r.1 = o1;
+
         let p2 = PLAINTEXT2_GOST_R3413_2015;
-        let i2 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i2, 0x1234567800000001_u64);
+        let i2 = r.0;
+        assert_eq!(i2, 0x234567890abcdef1_u64); 
         let o2 = magma.encrypt(i2);
-        assert_eq!(o2, 0xe571ca972ef0c049_u64);
+        assert_eq!(o2, 0xd612a348e78295bc_u64); 
         let c2 = p2 ^ o2;
-        assert_eq!(c2, ENCRYPTED2_CTR_GOST_R3413_2015);
+        assert_eq!(c2, ENCRYPTED2_OFB_GOST_R3413_2015);
 
-        pass_count += 1;
+        r.0 = r.1;
+        r.1 = o2;
+
         let p3 = PLAINTEXT3_GOST_R3413_2015;
-        let i3 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i3, 0x1234567800000002_u64);
+        let i3 = r.0;
+        assert_eq!(i3, 0x49e910895a8336da_u64); 
         let o3 = magma.encrypt(i3);
-        assert_eq!(o3, 0x59f57da6601ad9a3_u64);
+        assert_eq!(o3, 0xea60cb4c24a63032_u64); 
         let c3 = p3 ^ o3;
-        assert_eq!(c3, ENCRYPTED3_CTR_GOST_R3413_2015);
+        assert_eq!(c3, ENCRYPTED3_OFB_GOST_R3413_2015);
 
-        pass_count += 1;
+        r.0 = r.1;
+        r.1 = o3;
+
         let p4 = PLAINTEXT4_GOST_R3413_2015;
-        let i4 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i4, 0x1234567800000003_u64);
+        let i4 = r.0;
+        assert_eq!(i4, 0xd612a348e78295bc_u64); 
         let o4 = magma.encrypt(i4);
-        assert_eq!(o4, 0xdf9cf61bbce7df6c_u64);
+        assert_eq!(o4, 0x4136af23aafaa544_u64); 
         let c4 = p4 ^ o4;
-        assert_eq!(c4, ENCRYPTED4_CTR_GOST_R3413_2015);
+        assert_eq!(c4, ENCRYPTED4_OFB_GOST_R3413_2015);
     }
 }
