@@ -15,10 +15,10 @@ fn magma_buffer_benchmark(c: &mut Criterion) {
     let source_buffer = [0_u8; 4096];
     let mut magma = Magma::new();
     c.bench_function("encrypt", |bencher| {
-        bencher.iter(|| magma.cipher(&source_buffer, CipherOperation::Encrypt, CipherMode::Ecb))
+        bencher.iter(|| magma.cipher(&source_buffer, CipherOperation::Encrypt, CipherMode::ECB))
     });
     c.bench_function("decrypt", |bencher| {
-        bencher.iter(|| magma.cipher(&source_buffer, CipherOperation::Decrypt, CipherMode::Ecb))
+        bencher.iter(|| magma.cipher(&source_buffer, CipherOperation::Decrypt, CipherMode::ECB))
     });
 }
 

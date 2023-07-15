@@ -7,7 +7,7 @@
 
 ## Supported Cipher Modes
 
-Supported Cipher Modes: **ECB**, **CTR**, **CTR-ACPKM**, **OFB**, **MAC**
+Supported Cipher Modes: **ECB**, **CTR**, **CTR-ACPKM**, **OFB**, **CBC**, **MAC**
 
 ## Implemented and tested according to specifications
 

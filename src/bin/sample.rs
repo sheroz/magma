@@ -48,10 +48,10 @@ fn sample_encrypt_text_ofb() {
 
     let mut magma = Magma::with_key(&cipher_key);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::OFB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
+    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::OFB);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
