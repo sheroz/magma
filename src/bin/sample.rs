@@ -48,10 +48,10 @@ fn sample_encrypt_text_ecb() {
 
     let mut magma = Magma::with_key(&cipher_key);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::ECB);
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ecb);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::ECB);
+    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ecb);
 
     // remove padding bytes
     decrypted.truncate(source_bytes.len());
