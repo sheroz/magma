@@ -62,6 +62,7 @@ pub enum CipherOperation {
 /// * **MAC** - Message Authentication Code Generation Mode
 /// 
 /// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
 /// [CTR-ACPKM](https://www.rfc-editor.org/rfc/rfc8645.html)
 pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode
@@ -123,8 +124,11 @@ impl Magma {
     /// Initialization Vector (IV)
     ///  
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// 
     /// CTR Mode: Page 36, Section A.2.2, uses MSB(32) part of IV
+    /// 
     /// OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
+    /// 
     /// CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
     pub const IV_GOST_R3413_2015: [u64;3] = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64, 0x34567890abcdef12_u64];
 
@@ -435,6 +439,7 @@ impl Magma {
     /// Implements Counter Encryption (CTR_ACPKM) Mode
     /// 
     /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
+    /// 
     /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
     fn cipher_ctr_acpkm(&mut self, buf: &[u8]) -> Vec<u8> {
 
@@ -671,7 +676,9 @@ impl Magma {
     }
 
     /// Returns subkeys for CMAC as `(u64, u64)`
+    /// 
     /// Key generation algorithm is based on: 
+    /// 
     /// [OMAC1 a.k.a CMAC](https://en.wikipedia.org/wiki/One-key_MAC)
     fn generate_cmac_subkeys(&self) -> (u64, u64){
         let r = self.encrypt(0x0_u64);
