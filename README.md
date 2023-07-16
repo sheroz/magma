@@ -75,10 +75,10 @@ Output:
     let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
     magma.set_iv(&initialization_vector);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::OFB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
+    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::OFB);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
