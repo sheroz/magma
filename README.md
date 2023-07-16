@@ -6,7 +6,7 @@
 <a href="https://docs.rs/cipher_magma" target="_blank">
     <img src="https://img.shields.io/docsrs/cipher_magma" />
 </a>
-<a href="https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml/badge.svg" target="_blank">
+<a href="https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml" target="_blank">
     <img src="https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml/badge.svg" />
 </a>
 <a href="https://github.com/sheroz/cipher_magma/blob/main/LICENSE.txt" target="_blank">
