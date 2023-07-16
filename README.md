@@ -5,6 +5,16 @@
 ![build & test](https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml/badge.svg)
 ![GitHub](https://img.shields.io/github/license/sheroz/cipher_magma)
 
+## Supported Cipher Modes
+
+* **ECB** - Electronic Codebook Mode
+* **CTR** - Counter Encryption Mode
+* **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html)
+* **OFB** - Output Feedback Mode
+* **CBC** - Cipher Block Chaining Mode
+* **CFB** - Cipher Feedback Mode
+* **MAC** - Message Authentication Code Generation Mode
+
 ## Implemented and tested according to specifications
 
 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
@@ -44,9 +54,7 @@ Output:
     Encrypted ciphertext: 4ee901e5c2d8ca3d
     Decrypted block: fedcba9876543210
 
-### Sample of text encryption in Electronic Code Book (ECB) mode
-
-#### Before using Electronic Code Book (ECB) mode, please make sure that you understand its drawbacks
+### Sample of text encryption in Output Feedback (OFB) mode
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -63,14 +71,14 @@ Output:
     ];
 
     let mut magma = Magma::with_key(&cipher_key);
+
+    let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
+    magma.set_iv(&initialization_vector);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::ECB);
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::ECB);
-
-    // remove padding bytes
-    decrypted.truncate(source_bytes.len());
+    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::Ofb);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
@@ -81,7 +89,7 @@ Output:
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
 
     Encrypted ciphertext:
-    [c7, 28, af, af, 1f, 85, e0, 72, de, ca, 29, a4, b0, 1f, 13, 19, df, 5b, 38, 65, 95, b1, 31, b3, 29, 68, c7, 4d, 18, 72, 4a, 21, 1d, 66, 93, c, a7, 3, a2, b1, 19, 33, fd, ec, 19, cd, ae, 19, 61, 13, 54, c4, 41, 5, c1, d9, 13, e, d4, 7f, 23, 5c, 9d, 80, f8, d5, 67, a4, b3, cf, ef, 50, ba, 3f, 12, 96, 1a, a, f9, 55, 25, e6, da, 33, 1a, 4e, e0, f1, 5f, be, d2, a7, a7, f, ff, 4d, b5, 87, f3, e6, a8, a, 1c, 4c, ce, f0, 10, e2, c3, b2, 3c, b2, 38, de, 2b, a, ae, d0, e4, 83, b0, a6, 34, d5, 89, 8a, ca, f2, d6, 11, 73, f5, e8, a6, c5, 91, e, 76, 2d, 62, 87, 6c, 7b, 68, 2a, 70, d4, b8, d0, ef, 91, 6e, 7f, 6d, 38, f, 5b, 10, db, b2, 34, c4, 39, 2d, 74, 9e, 1, ea, 36, 18, 54, 8a, dd, 27, bd, e6, f6, 6c, e5, 8d, 7a, 3b, cb, e, cf, 70, 2c, 8f, c0, 4e, b1, b1, 68, 8, 45, c4, 1e, a9, 70, 67, 25, 39, 62, 49, b4, 63, 57, a9, d7, 5a, 94, 38, 42, c1, e1, b8, 2b, 1e, 49, 9e, 44, 83, 6, 35, 2b, a7, ab, da, b1, b4, 7, 3, 2b, 8e, 2f, bd, 5a, b2, ca, 65, 6b, 4a, 3, 51, be, b9, 18, a8, 67, 8e, 4f, a1, 4f, 2b, cd, 6d, 87, a5, 3d, 8b, 15, b2, 46, 84, eb, 2, 4b, 7d, bd, 99, c3, d0, 7e, 4, a6, 7f, 6e, 9d, 93, e0, 69, bd, d3, 67, cf, 97, 96, bb, 2f, 48, df, ad, 28, ec, 53, 8c, 38, 85, e7, b2, 9e, de, ff, b0, 55, d0, ab, 9a, 91, 47, d4, dd, 30, 61, 42, c1, c3, 7a, 89, a3, b2, 2d, 73, c2, 98, b3, 19, 6e, ee, c4, c1, 9b, 3e, 7e, d5, 55]
+    [5, 86, 62, ec, 37, a3, 5f, aa, a5, 67, ce, 68, 83, ed, f9, d3, 98, 40, b8, 25, 50, 86, 51, 5f, 24, 42, 83, 3, c9, 95, cb, 37, 5e, 68, 77, 3f, 77, 88, 19, 40, c2, 3, 37, b9, 52, 5c, ce, d0, b5, 8, 58, 4a, 98, 22, e7, bd, 29, 66, 14, 70, ac, b2, 68, 2c, 6, b9, 5d, 1f, 92, f2, 64, 1c, 4b, 91, f0, a, 26, a8, e2, 8a, b7, d0, 47, fe, 46, b6, c8, 99, 93, b4, 51, 9e, d7, a2, 58, 7b, 51, b3, d5, 57, a6, 9c, 9b, ef, 24, 6d, a9, 55, 4e, f4, cc, e1, 6d, 84, dc, 2, 22, d2, b7, d6, bd, 61, 16, 32, 9e, 10, 43, 58, 81, 17, 8d, ec, 7d, fe, ed, ef, 66, 83, 7a, ad, 8c, d3, 99, 24, a7, 80, 2c, 94, 1f, 6c, 36, de, 3d, b2, 9, 77, 89, a3, c0, eb, 9c, bb, 27, 42, 47, 80, 78, a4, 10, fa, fe, da, 2, 3b, e0, c8, a5, e7, ed, e0, 25, 65, f2, 72, 72, 61, dc, a5, 7d, 7a, b1, 11, f0, 80, 50, 13, d6, fc, d9, 3d, 94, d7, 10, a5, d4, 44, 11, 10, d1, 19, f4, 43, aa, 24, 89, d2, e8, 50, 3f, 74, 88, 50, 51, 9b, bb, 2c, d3, 92, 3f, b5, 2a, eb, b9, 7b, 86, fa, 5f, f2, 76, 16, 99, 7, 44, 78, a9, ea, ec, c0, 34, 8b, cf, 48, 4c, ac, ff, 6b, b0, 2, 14, ce, 91, ff, 4b, 7c, d8, f7, ab, f4, ed, 53, b9, 76, 90, bd, 34, 67, 84, 44, ec, 2b, fe, 7b, db, 7a, 76, 9a, e7, 6, bf, 7f, 4, 99, 5e, 28, 44, 3f, 7, e4, e6, f1, ce, 40, f5, 9e, 8e, d5, 9, 47, 40, 82, d2, 5f, 3a, 47, 86, 2d, 53, 14, d6, 6a, 40, b7, b8, 57, ab, dc, a, d1, 95, b5, b9, 1c, 48, a0, 9d, 85]
 
     Decrypted text:
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.

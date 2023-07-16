@@ -4,14 +4,14 @@ fn main() {
     println!("\n***\n\nSample of block encryption:");
     sample_encrypt_block();
 
-    println!("\n***\n\nSample of text encryption in ECB mode:");
-    sample_encrypt_text_ecb(); 
+    println!("\n***\n\nSample of text encryption in OFB mode:");
+    sample_encrypt_text_ofb(); 
 
     println!("\n***\n\nSample of Message Authentication Code (MAC) generation:");
     sample_generate_mac();
 }
 
-/// Block encryption sample
+/// Sample of block encryption 
 fn sample_encrypt_block() {
     let mut magma = Magma::new();
 
@@ -30,8 +30,8 @@ fn sample_encrypt_block() {
     println!("Decrypted block: {:x}", decrypted);
 }
 
-/// Text encryption sample in ECB mode
-fn sample_encrypt_text_ecb() {
+/// Sample of text encryption in Output Feedback (OFB) mode
+fn sample_encrypt_text_ofb() {
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
         Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -47,20 +47,20 @@ fn sample_encrypt_text_ecb() {
     ];
 
     let mut magma = Magma::with_key(&cipher_key);
+
+    let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
+    magma.set_iv(&initialization_vector);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::ECB);
+    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::OFB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::ECB);
-
-    // remove padding bytes
-    decrypted.truncate(source_bytes.len());
+    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::OFB);
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
 }
 
-/// Message Authentication Code (MAC) sample
+/// Sample of Message Authentication Code (MAC) generation
 fn sample_generate_mac() {
     let security_key: [u32;8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn sample_encrypt_text_ecb_test() {
-        sample_encrypt_text_ecb();
+        sample_encrypt_text_ofb();
     }
 
     #[test]
