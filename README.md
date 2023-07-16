@@ -12,6 +12,7 @@
 * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html)
 * **OFB** - Output Feedback Mode
 * **CBC** - Cipher Block Chaining Mode
+* **CFB** - Cipher Feedback Mode
 * **MAC** - Message Authentication Code Generation Mode
 
 ## Implemented and tested according to specifications
@@ -70,6 +71,9 @@ Output:
     ];
 
     let mut magma = Magma::with_key(&cipher_key);
+
+    let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
+    magma.set_iv(&initialization_vector);
     
     let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::Ofb);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);

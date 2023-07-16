@@ -17,12 +17,14 @@
     GOST 28147-89 IMIT
 */
 
+use std::collections::VecDeque;
+
 /// Block Cipher "Magma"
 pub struct Magma {
     cipher_key: [u32;8],
     round_keys: [u32;32],
     substitution_box: [u8;128],
-    initialization_vector: Vec<u64>,
+    iv: Vec<u64>,
 }
 
 /// **Cipher operation**
@@ -46,9 +48,8 @@ pub enum CipherOperation {
 /// * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html)
 /// * **OFB** - Output Feedback Mode
 /// * **CBC** - Cipher Block Chaining Mode
+/// * **CFB** - Cipher Feedback Mode
 /// * **MAC** - Message Authentication Code Generation Mode
-/// 
-/// * Not implemented yet: **CFB**
 /// 
 /// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// [CTR-ACPKM](https://www.rfc-editor.org/rfc/rfc8645.html)
@@ -69,10 +70,8 @@ pub enum CipherMode {
     /// Cipher Block Chaining (CBC) Mode
     CBC,
 
-    /*
     /// Cipher Feedback Mode (CFB)
     CFB,
-    */
 
     /// Message Authentication Code (MAC) Generation Mode
     MAC 
@@ -114,8 +113,9 @@ impl Magma {
     /// Initialization Vector (IV)
     ///  
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// CTR Mode: Page 36, Section A.2.2, uses only the MSB(32) part of IV
-    /// OFB Mode: Page 37, Section A.2.3, uses only the MSB(128) part of IV
+    /// CTR Mode: Page 36, Section A.2.2, uses MSB(32) part of IV
+    /// OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
+    /// CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
     pub const IV_GOST_R3413_2015: [u64;3] = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64, 0x34567890abcdef12_u64];
 
     /// Р 1323565.1.017—2018
@@ -146,8 +146,8 @@ impl Magma {
         let cipher_key = [0u32;8];
         let round_keys = [0u32;32];
         let substitution_box = Magma::SUBSTITUTION_BOX_RFC7836.clone();
-        let initialization_vector = Vec::from(Magma::IV_GOST_R3413_2015);
-        Magma { cipher_key, round_keys, substitution_box, initialization_vector }
+        let iv = Vec::from(Magma::IV_GOST_R3413_2015);
+        Magma { cipher_key, round_keys, substitution_box, iv }
     }
 
     /// Returns a new Magma initialized with given cipher key
@@ -186,20 +186,28 @@ impl Magma {
     /// 
     /// # Arguments
     ///
-    /// * `initialization_vector` - A slice to `&[u64]` array
+    /// * `iv` - A slice to `&[u64]` array
     /// 
     /// **Attention**: `CTR` Mode uses only the MSB(32) part of IV
-    pub fn set_initialization_vector(&mut self, initialization_vector: &[u64]) {
-        self.initialization_vector = Vec::from(initialization_vector);
+    pub fn set_iv(&mut self, iv: &[u64]) {
+        self.iv = Vec::from(iv);
     }
 
     #[inline]
-    fn prepare_initialization_vector_ctr(&self) -> u64 {
-        // Magma in CTR mode uses the IV MSB(32) extended to 64bit with Initial Nonce
-        // Initial Nonce = 0x00000000
-        self.initialization_vector[0] & 0xffffffff_00000000
+    fn prepare_vector_ctr(&self) -> u64 {
+        self.ensure_iv_not_empty();
+        // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+        // CTR Mode: Page 36, Section A.2.2, uses MSB(32) part of IV extended to 64bit with Initial Nonce
+        // Initial Nonce: 0x00000000
+        self.iv[0] & 0xffffffff_00000000
     }
 
+    #[inline]
+    fn ensure_iv_not_empty(&self) {
+        if self.iv.is_empty() {
+            panic!("Initialization vector is empty!");
+        }
+    }
     /// Sets the cipher key from `[u32;8]` array
     /// 
     /// # Arguments
@@ -341,6 +349,7 @@ impl Magma {
                     CipherMode::CTR_ACPKM => self.cipher_ctr_acpkm(buf),
                     CipherMode::OFB => self.cipher_ofb(buf),
                     CipherMode::CBC => self.cipher_cbc_encrypt(buf),
+                    CipherMode::CFB => self.cipher_cfb_encrypt(buf),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in encrypting operation!")
                 }
             },
@@ -351,6 +360,7 @@ impl Magma {
                     CipherMode::CTR_ACPKM => self.cipher_ctr_acpkm(buf),
                     CipherMode::OFB => self.cipher_ofb(buf),
                     CipherMode::CBC => self.cipher_cbc_decrypt(buf),
+                    CipherMode::CFB => self.cipher_cfb_decrypt(buf),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in decrypting operation!")
                 }
             },
@@ -392,8 +402,9 @@ impl Magma {
     /// 
     /// Page 14, Section 5.2
     fn cipher_ctr(&mut self, buf: &[u8]) -> Vec<u8> {
+
+        let iv_ctr = self.prepare_vector_ctr();
         let mut result = Vec::<u8>::with_capacity(buf.len());
-        let iv_ctr = self.prepare_initialization_vector_ctr();
 
         for (chunk_index, chunk) in buf.chunks(8).enumerate() {
             let mut array_u8 = [0u8;8];
@@ -417,10 +428,10 @@ impl Magma {
     /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
     fn cipher_ctr_acpkm(&mut self, buf: &[u8]) -> Vec<u8> {
 
+        let iv_ctr = self.prepare_vector_ctr();
         let mut result = Vec::<u8>::with_capacity(buf.len());
 
         let original_key = self.cipher_key;
-        let iv_ctr = self.prepare_initialization_vector_ctr();
         let mut section_bits_processed = 0;
 
         for (chunk_index, chunk) in buf.chunks(8).enumerate() {
@@ -457,19 +468,22 @@ impl Magma {
     /// 
     /// Page 16, Section 5.3
     fn cipher_ofb(&mut self, buf: &[u8]) -> Vec<u8> {
+
+        self.ensure_iv_not_empty();
+        let mut register_r = VecDeque::from(self.iv.clone());
+
         let mut result = Vec::<u8>::with_capacity(buf.len());
-        let mut register_r = [self.initialization_vector[0], self.initialization_vector[1]];
 
         for chunk in buf.chunks(8) {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block = u64::from_be_bytes(array_u8);
 
-            let ofb = self.encrypt(register_r[0]);
+            let register_n= register_r.pop_front().unwrap();
+            let ofb = self.encrypt(register_n);
             let output = ofb ^ block;
 
-            register_r[0] = register_r[1];
-            register_r[1] = ofb;
+            register_r.push_back(ofb);
 
             result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
         }
@@ -485,21 +499,21 @@ impl Magma {
     /// 
     /// Page 20, Section 5.4.1
     fn cipher_cbc_encrypt(&mut self, buf: &[u8]) -> Vec<u8> {
-        let mut result = Vec::<u8>::with_capacity(buf.len());
 
-        let mut register_r = [self.initialization_vector[0],
-                                        self.initialization_vector[1],
-                                        self.initialization_vector[2]];
+        self.ensure_iv_not_empty();
+        let mut register_r = VecDeque::from(self.iv.clone());
+
+        let mut result = Vec::<u8>::with_capacity(buf.len());
 
         for chunk in buf.chunks(8) {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block = u64::from_be_bytes(array_u8);
-            let output = self.encrypt(block ^ register_r[0]);
 
-            register_r[0] = register_r[1];
-            register_r[1] = register_r[2];
-            register_r[2] = output;
+            let register_n= register_r.pop_front().unwrap();
+            let output = self.encrypt(block ^ register_n);
+
+            register_r.push_back(output);
 
             result.extend_from_slice(&output.to_be_bytes());
         }
@@ -515,23 +529,81 @@ impl Magma {
     /// 
     /// Page 21, Section 5.4.2
     fn cipher_cbc_decrypt(&mut self, buf: &[u8]) -> Vec<u8> {
-        let mut result = Vec::<u8>::with_capacity(buf.len());
 
-        let mut register_r = [self.initialization_vector[0],
-                                        self.initialization_vector[1],
-                                        self.initialization_vector[2]];
+        self.ensure_iv_not_empty();
+        let mut register_r = VecDeque::from(self.iv.clone());
+
+        let mut result = Vec::<u8>::with_capacity(buf.len());
 
         for chunk in buf.chunks(8) {
             let mut array_u8 = [0u8;8];
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
             let block = u64::from_be_bytes(array_u8);
-            let output = self.decrypt(block) ^ register_r[0];
+
+            let register_n= register_r.pop_front().unwrap();
+            let output = self.decrypt(block) ^ register_n;
             
-            register_r[0] = register_r[1];
-            register_r[1] = register_r[2];
-            register_r[2] = block;
+            register_r.push_back(block);
 
             result.extend_from_slice(&output.to_be_bytes());
+        }
+
+        result
+    }
+
+    /// Returns encrypted result as `Vec<u8>`
+    /// 
+    /// Implements Cipher Feedback (CFB) Mode
+    /// 
+    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// 
+    /// Page 22, Section 5.5
+    fn cipher_cfb_encrypt(&mut self, buf: &[u8]) -> Vec<u8> {
+
+        self.ensure_iv_not_empty();
+        let mut register_r = VecDeque::from(self.iv.clone());
+
+        let mut result = Vec::<u8>::with_capacity(buf.len());
+        for chunk in buf.chunks(8) {
+            let mut array_u8 = [0u8;8];
+            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+            let block = u64::from_be_bytes(array_u8);
+
+            let register_n= register_r.pop_front().unwrap();
+            let output = self.encrypt(register_n) ^ block;
+
+            register_r.push_back(output);
+
+            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
+        }
+
+        result
+    }
+
+    /// Returns encrypted result as `Vec<u8>`
+    /// 
+    /// Implements Cipher Feedback (CFB) Mode
+    /// 
+    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+    /// 
+    /// Page 22, Section 5.5
+    fn cipher_cfb_decrypt(&mut self, buf: &[u8]) -> Vec<u8> {
+
+        self.ensure_iv_not_empty();
+        let mut register_r = VecDeque::from(self.iv.clone());
+
+        let mut result = Vec::<u8>::with_capacity(buf.len());
+        for chunk in buf.chunks(8) {
+            let mut array_u8 = [0u8;8];
+            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+            let block = u64::from_be_bytes(array_u8);
+
+            let register_n= register_r.pop_front().unwrap();
+            let output = self.encrypt(register_n) ^ block;
+
+            register_r.push_back(block);
+
+            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
         }
 
         result
@@ -657,7 +729,7 @@ mod tests {
     const ENCRYPTED4_OFB_GOST_R3413_2015: u64 = 0xc824efb8bd4fdb05_u64;
 
     // Test vectors GOST R 34.13-2015
-    // Encrypting in OFB Mode
+    // Encrypting in CBC Mode
     // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
     // Page 38, Section A.2.4
     const ENCRYPTED1_CBC_GOST_R3413_2015: u64 = 0x96d1b05eea683919_u64;
@@ -665,21 +737,30 @@ mod tests {
     const ENCRYPTED3_CBC_GOST_R3413_2015: u64 = 0x5058b4a1c4bc0019_u64;
     const ENCRYPTED4_CBC_GOST_R3413_2015: u64 = 0x20b78b1a7cd7e667_u64;
 
+    // Test vectors GOST R 34.13-2015
+    // Encrypting in CFB Mode
+    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+    // Page 39, Section A.2.5
+    const ENCRYPTED1_CFB_GOST_R3413_2015:u64 = 0xdb37e0e266903c83_u64;
+    const ENCRYPTED2_CFB_GOST_R3413_2015:u64 = 0x0d46644c1f9a089c_u64;
+    const ENCRYPTED3_CFB_GOST_R3413_2015:u64 = 0x24bdd2035315d38b_u64;
+    const ENCRYPTED4_CFB_GOST_R3413_2015:u64 = 0xbcc0321421075505_u64;
+
     #[test]
     fn default_initialization() {
         let magma = Magma::new();
         assert_eq!(magma.cipher_key, [0u32;8]);
         assert_eq!(magma.round_keys, [0u32;32]);
         assert_eq!(magma.substitution_box, Magma::SUBSTITUTION_BOX_RFC7836);
-        assert_eq!(magma.initialization_vector, Magma::IV_GOST_R3413_2015);
+        assert_eq!(magma.iv, Magma::IV_GOST_R3413_2015);
     }
 
     #[test]
     fn set_initialization_vector() {
         let mut magma = Magma::new();
         let initialization_vector = vec![0x11223344_u64];
-        magma.set_initialization_vector(&initialization_vector);
-        assert_eq!(magma.initialization_vector, initialization_vector);
+        magma.set_iv(&initialization_vector);
+        assert_eq!(magma.iv, initialization_vector);
     }
 
     #[test]
@@ -1185,12 +1266,16 @@ mod tests {
 
         // s = n = 64, m = 2n = 128
         // IV = 1234567890abcdef234567890abcdef1
+        let iv = 0x1234567890abcdef234567890abcdef1_u128;
+        
+        // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+        // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
+        let mut r = [Magma::IV_GOST_R3413_2015[0], Magma::IV_GOST_R3413_2015[1]];
+        let mut v1 = Vec::from(r[0].to_be_bytes());
+        v1.extend_from_slice(&r[1].to_be_bytes());
+        assert_eq!(iv.to_be_bytes(), v1.as_slice());
 
         let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-
-        let iv = Magma::IV_GOST_R3413_2015;
-
-        let mut r = [iv[0], iv[1]];
 
         let p1 = PLAINTEXT1_GOST_R3413_2015;
         let i1 = r[0];
@@ -1247,6 +1332,11 @@ mod tests {
         source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
         let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+
+        // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+        // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
+        magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
+
         let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::OFB);
         assert!(!encrypted.is_empty());
 
@@ -1259,7 +1349,6 @@ mod tests {
 
         let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::OFB);
         assert_eq!(decrypted, source);
-
     }
 
     #[test]
@@ -1342,6 +1431,100 @@ mod tests {
         assert_eq!(encrypted, expected);
 
         let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::CBC);
+        assert_eq!(decrypted, source);
+
+    }
+
+    #[test]
+    fn cfb_steps_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 39, Section A.2.5
+
+        // s = n = 64, m = 2n = 128
+        // IV = 1234567890abcdef234567890abcdef1
+        let iv = 0x1234567890abcdef234567890abcdef1_u128;
+
+        // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+        // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
+        let mut r = [Magma::IV_GOST_R3413_2015[0], Magma::IV_GOST_R3413_2015[1]];
+        let mut v1 = Vec::from(r[0].to_be_bytes());
+        v1.extend_from_slice(&r[1].to_be_bytes());
+        assert_eq!(iv.to_be_bytes(), v1.as_slice());
+
+        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+
+        let p1 = PLAINTEXT1_GOST_R3413_2015;
+        let i1 = r[0];
+        assert_eq!(i1, 0x1234567890abcdef_u64);
+        let o1 = magma.encrypt(i1);
+        assert_eq!(o1, 0x49e910895a8336da_u64);
+        let c1 = o1 ^ p1;
+        assert_eq!(c1, ENCRYPTED1_CFB_GOST_R3413_2015);
+
+        r[0] = r[1];
+        r[1] = c1;
+
+        let p2 = PLAINTEXT2_GOST_R3413_2015;
+        let i2 = r[0];
+        assert_eq!(i2, 0x234567890abcdef1_u64);
+        let o2 = magma.encrypt(i2);
+        assert_eq!(o2, 0xd612a348e78295bc_u64);
+        let c2 = o2 ^ p2;
+        assert_eq!(c2, ENCRYPTED2_CFB_GOST_R3413_2015);
+
+        r[0] = r[1];
+        r[1] = c2;
+
+        let p3 = PLAINTEXT3_GOST_R3413_2015;
+        let i3 = r[0];
+        assert_eq!(i3, 0xdb37e0e266903c83_u64);
+        let o3 = magma.encrypt(i3);
+        assert_eq!(o3, 0x6e25292d34bdd1c7_u64);
+        let c3 = o3 ^ p3;
+        assert_eq!(c3, ENCRYPTED3_CFB_GOST_R3413_2015);
+
+        r[0] = r[1];
+        r[1] = c3;
+
+        let p4 = PLAINTEXT4_GOST_R3413_2015;
+        let i4 = r[0];
+        assert_eq!(i4, 0x0d46644c1f9a089c_u64);
+        let o4 = magma.encrypt(i4);
+        assert_eq!(o4, 0x35d2728f36b22b44_u64);
+        let c4 = o4 ^ p4;
+        assert_eq!(c4, ENCRYPTED4_CFB_GOST_R3413_2015);
+    }
+
+    #[test]
+    fn cipher_cfb_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 39, Section A.2.5
+
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+
+        // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+        // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
+        magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
+
+        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::CFB);
+        assert!(!encrypted.is_empty());
+
+        let mut expected = Vec::<u8>::new();
+        expected.extend_from_slice(&ENCRYPTED1_CFB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED2_CFB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED3_CFB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&ENCRYPTED4_CFB_GOST_R3413_2015.to_be_bytes());
+        assert_eq!(encrypted, expected);
+
+        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::CFB);
         assert_eq!(decrypted, source);
 
     }

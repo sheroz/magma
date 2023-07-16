@@ -47,6 +47,9 @@ fn sample_encrypt_text_ofb() {
     ];
 
     let mut magma = Magma::with_key(&cipher_key);
+
+    let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
+    magma.set_iv(&initialization_vector);
     
     let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::OFB);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
