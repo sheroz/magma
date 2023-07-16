@@ -557,7 +557,7 @@ impl Magma {
     /// 
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     /// 
-    /// Page 22, Section 5.5
+    /// Page 23, Section 5.5.1
     fn cipher_cfb_encrypt(&mut self, buf: &[u8]) -> Vec<u8> {
 
         self.ensure_iv_not_empty();
@@ -580,13 +580,13 @@ impl Magma {
         result
     }
 
-    /// Returns encrypted result as `Vec<u8>`
+    /// Returns decrypted result as `Vec<u8>`
     /// 
     /// Implements Cipher Feedback (CFB) Mode
     /// 
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     /// 
-    /// Page 22, Section 5.5
+    /// Page 24, Section 5.5.2
     fn cipher_cfb_decrypt(&mut self, buf: &[u8]) -> Vec<u8> {
 
         self.ensure_iv_not_empty();
