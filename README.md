@@ -1,9 +1,9 @@
 # Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
 
-<a href="https://crates.io/crates/cipher_magma" target="_blank"><img src="https://img.shields.io/crates/v/cipher_magma"/></a>
-<a href="https://docs.rs/cipher_magma" target="_blank"><img src="https://img.shields.io/docsrs/cipher_magma"/></a>
-<a href="https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml" target="_blank"><img src="https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml/badge.svg"/></a>
-<a href="https://github.com/sheroz/cipher_magma/blob/main/LICENSE.txt" target="_blank"><img src="https://img.shields.io/github/license/sheroz/cipher_magma"/></a>
+[![crates.io](https://img.shields.io/crates/v/cipher_magma)](https://crates.io/crates/cipher_magma)
+[![docs](https://img.shields.io/docsrs/cipher_magma)](https://docs.rs/cipher_magma)
+[![build & test](https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml/badge.svg)](https://github.com/sheroz/cipher_magma/actions/workflows/ci.yml)
+[![MIT](https://img.shields.io/github/license/sheroz/cipher_magma)](https://github.com/sheroz/cipher_magma/blob/main/LICENSE.txt)
 
 ## Supported Cipher Modes
 
