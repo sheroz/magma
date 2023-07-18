@@ -84,7 +84,7 @@ Output:
 
     let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
 
-    if Magma::needs_padding(&cipher_mode)
+    if Magma::require_padding(&cipher_mode)
     {
         // remove padding bytes
         decrypted.truncate(source_bytes.len());
