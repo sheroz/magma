@@ -2,12 +2,6 @@
 name = "cipher_magma_samples"
 version = "0.1.0"
 edition = "2021"
-authors = ["Sheroz Khaydarov"]
-description = "Usage samples for cipher_magma crate"
-readme = "README.md"
-repository = "https://github.com/sheroz/cipher_magma"
-keywords = ["cryptography", "block-cipher", "magma", "gost-r-34-12-2015", "gost-28147-89"]
-license = "MIT"
 
 [dependencies]
 cipher_magma = { path = "../cipher_magma" }
