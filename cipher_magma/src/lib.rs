@@ -701,7 +701,14 @@ impl Magma {
         (k1, k2)
     }
 
-    pub fn needs_padding(cipher_mode: &CipherMode) -> bool
+    /// Returns a boolean value indicating whether the given `cipher_mode` require padding
+    /// 
+    /// Some cipher modes require the size of the input plaintext to be multiple of the block size,
+    /// so input plaintext may have to be padded before encryption to bring it to the required length.
+    /// 
+    /// # Argument
+    /// * cipher_mode - a reference to `CipherMode`
+    pub fn require_padding(cipher_mode: &CipherMode) -> bool
     {
         match cipher_mode {
             CipherMode::CTR => false,
@@ -711,7 +718,6 @@ impl Magma {
             _ => true
         }
     }
-
 }
 
 #[cfg(test)]
@@ -839,13 +845,13 @@ mod tests {
 
     #[test]
     fn has_padding_r_34_13_2015() {
-        assert_eq!(Magma::needs_padding(&CipherMode::ECB), true);
-        assert_eq!(Magma::needs_padding(&CipherMode::CTR), false);
-        assert_eq!(Magma::needs_padding(&CipherMode::CTR_ACPKM), false);
-        assert_eq!(Magma::needs_padding(&CipherMode::OFB), false);
-        assert_eq!(Magma::needs_padding(&CipherMode::CBC), true);
-        assert_eq!(Magma::needs_padding(&CipherMode::CFB), false);
-        assert_eq!(Magma::needs_padding(&CipherMode::MAC), true);
+        assert_eq!(Magma::require_padding(&CipherMode::ECB), true);
+        assert_eq!(Magma::require_padding(&CipherMode::CTR), false);
+        assert_eq!(Magma::require_padding(&CipherMode::CTR_ACPKM), false);
+        assert_eq!(Magma::require_padding(&CipherMode::OFB), false);
+        assert_eq!(Magma::require_padding(&CipherMode::CBC), true);
+        assert_eq!(Magma::require_padding(&CipherMode::CFB), false);
+        assert_eq!(Magma::require_padding(&CipherMode::MAC), true);
     }
 
     #[test]
@@ -1092,7 +1098,7 @@ mod tests {
         let mut decrypted = magma.cipher(&encrypted,&CipherOperation::Decrypt, &cipher_mode);
         assert!(decrypted.len() >= encrypted.len());
 
-        if Magma::needs_padding(&cipher_mode)
+        if Magma::require_padding(&cipher_mode)
         {
             // remove padding bytes
             decrypted.truncate(txt_bytes.len());
