@@ -4,8 +4,8 @@ fn main() {
     println!("\n***\n\nSample of block encryption:");
     sample_encrypt_block();
 
-    println!("\n***\n\nSample of text encryption in OFB mode:");
-    sample_encrypt_text_ofb(); 
+    println!("\n***\n\nSample of text encryption");
+    sample_encrypt_text(); 
 
     println!("\n***\n\nSample of Message Authentication Code (MAC) generation:");
     sample_generate_mac();
@@ -28,10 +28,15 @@ fn sample_encrypt_block() {
 
     let decrypted = magma.decrypt(encrypted);
     println!("Decrypted block: {:x}", decrypted);
+
+    assert_eq!(decrypted, source);
 }
 
-/// Sample of text encryption in Output Feedback (OFB) mode
-fn sample_encrypt_text_ofb() {
+/// Sample of text encryption
+fn sample_encrypt_text() {
+
+    let cipher_mode = CipherMode::CFB;
+
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
         Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -51,13 +56,21 @@ fn sample_encrypt_text_ofb() {
     let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
     magma.set_iv(&initialization_vector);
     
-    let encrypted = magma.cipher(source_bytes, CipherOperation::Encrypt, CipherMode::OFB);
+    let encrypted = magma.cipher(source_bytes, &CipherOperation::Encrypt, &cipher_mode);
     println!("Encrypted ciphertext:\n{:x?}\n", encrypted);
 
-    let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::OFB);
+    let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
+
+    if Magma::needs_padding(&cipher_mode)
+    {
+        // remove padding bytes
+        decrypted.truncate(source_bytes.len());
+    }
 
     let decrypted_text = String::from_utf8(decrypted).unwrap();
     println!("Decrypted text:\n{}\n", decrypted_text);
+
+    assert_eq!(decrypted_text, source_text);
 }
 
 /// Sample of Message Authentication Code (MAC) generation
@@ -95,8 +108,8 @@ mod tests {
     }
 
     #[test]
-    fn sample_encrypt_text_ecb_test() {
-        sample_encrypt_text_ofb();
+    fn sample_encrypt_text_test() {
+        sample_encrypt_text();
     }
 
     #[test]

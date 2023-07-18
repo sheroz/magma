@@ -8,7 +8,7 @@
 //! Supported Cipher Modes:
 //! * **ECB** - Electronic Codebook Mode
 //! * **CTR** - Counter Encryption Mode
-//! * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html)
+//! * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html), [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
 //! * **OFB** - Output Feedback Mode
 //! * **CBC** - Cipher Block Chaining Mode
 //! * **CFB** - Cipher Feedback Mode
@@ -352,9 +352,9 @@ impl Magma {
     /// # Arguments
     ///
     /// * `buf` - a slice of `&[u8]` input data
-    /// * `cipher_operation` - cipher operation as defined in `CipherOperation`
-    /// * `cipher_mode` - encryption mode as defined in `CipherMode`
-    pub fn cipher(&mut self, buf: &[u8], cipher_operation: CipherOperation, cipher_mode: CipherMode) -> Vec<u8> {
+    /// * `cipher_operation` - reference to `CipherOperation`
+    /// * `cipher_mode` - reference to `CipherMode`
+    pub fn cipher(&mut self, buf: &[u8], cipher_operation: &CipherOperation, cipher_mode: &CipherMode) -> Vec<u8> {
         match cipher_operation {
             CipherOperation::Encrypt => {
                 match cipher_mode {
@@ -700,6 +700,18 @@ impl Magma {
 
         (k1, k2)
     }
+
+    pub fn needs_padding(cipher_mode: &CipherMode) -> bool
+    {
+        match cipher_mode {
+            CipherMode::CTR => false,
+            CipherMode::CTR_ACPKM => false,
+            CipherMode::OFB => false,
+            CipherMode::CFB => false,
+            _ => true
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -812,6 +824,31 @@ mod tests {
     }
 
     #[test]
+    fn split_into_u32_rfc8891() {
+        // Test vectors RFC8891:
+        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
+        assert_eq!(Magma::u64_split(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
+    }
+
+    #[test]
+    fn join_as_u64_rfc8891() {
+        // Test vectors RFC8891:
+        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
+        assert_eq!(Magma::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
+    }
+
+    #[test]
+    fn has_padding_r_34_13_2015() {
+        assert_eq!(Magma::needs_padding(&CipherMode::ECB), true);
+        assert_eq!(Magma::needs_padding(&CipherMode::CTR), false);
+        assert_eq!(Magma::needs_padding(&CipherMode::CTR_ACPKM), false);
+        assert_eq!(Magma::needs_padding(&CipherMode::OFB), false);
+        assert_eq!(Magma::needs_padding(&CipherMode::CBC), true);
+        assert_eq!(Magma::needs_padding(&CipherMode::CFB), false);
+        assert_eq!(Magma::needs_padding(&CipherMode::MAC), true);
+    }
+
+    #[test]
     fn round_keys_rfc8891() {
         let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
 
@@ -849,20 +886,6 @@ mod tests {
         assert_eq!(magma.transformation_g(0xfdcbc20c, 0x87654321), 0x7e791a4b);
         assert_eq!(magma.transformation_g(0x7e791a4b, 0xfdcbc20c), 0xc76549ec);
         assert_eq!(magma.transformation_g(0xc76549ec, 0x7e791a4b), 0x9791c849);
-    }
-
-    #[test]
-    fn split_into_u32_rfc8891() {
-        // Test vectors RFC8891:
-        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-        assert_eq!(Magma::u64_split(0xfedcba9876543210_u64),(0xfedcba98_u32, 0x76543210_u32));
-    }
-
-    #[test]
-    fn join_as_u64_rfc8891() {
-        // Test vectors RFC8891:
-        // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
-        assert_eq!(Magma::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
     }
 
     #[test]
@@ -1037,7 +1060,7 @@ mod tests {
         source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
         let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::ECB);
+        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::ECB);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -1047,7 +1070,7 @@ mod tests {
         expected.extend_from_slice(&ENCRYPTED4_ECB_GOST_R3413_2015.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted,CipherOperation::Decrypt, CipherMode::ECB);
+        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::ECB);
         assert_eq!(decrypted, source);
     }
 
@@ -1061,15 +1084,19 @@ mod tests {
 
         let txt_bytes = txt.as_bytes();
 
+        let cipher_mode = CipherMode::ECB;
         let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.cipher(txt_bytes, CipherOperation::Encrypt, CipherMode::ECB);
+        let encrypted = magma.cipher(txt_bytes, &CipherOperation::Encrypt, &cipher_mode);
         assert!(!encrypted.is_empty());
 
-        let mut decrypted = magma.cipher(&encrypted,CipherOperation::Decrypt, CipherMode::ECB);
+        let mut decrypted = magma.cipher(&encrypted,&CipherOperation::Decrypt, &cipher_mode);
         assert!(decrypted.len() >= encrypted.len());
 
-        // remove padding bytes
-        decrypted.truncate(txt_bytes.len());
+        if Magma::needs_padding(&cipher_mode)
+        {
+            // remove padding bytes
+            decrypted.truncate(txt_bytes.len());
+        }
 
         let decrypted_text = String::from_utf8(decrypted).unwrap();
         assert_eq!(decrypted_text, txt);
@@ -1152,7 +1179,7 @@ mod tests {
         src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
         src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
-        let mac_vec = magma.cipher(&src_buf, CipherOperation::MessageAuthentication, CipherMode::MAC);
+        let mac_vec = magma.cipher(&src_buf, &CipherOperation::MessageAuthentication, &CipherMode::MAC);
         assert_eq!(mac_vec.len(), 4);
 
         let mut array_u8 = [0u8;4];
@@ -1223,7 +1250,7 @@ mod tests {
         source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
         let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::CTR);
+        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CTR);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -1233,7 +1260,7 @@ mod tests {
         expected.extend_from_slice(&ENCRYPTED4_CTR_GOST_R3413_2015.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::CTR);
+        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CTR);
         assert_eq!(decrypted, source);
 
     }
@@ -1260,7 +1287,7 @@ mod tests {
         let mut magma = Magma::new();
         magma.set_key_from_bytes(&cipher_key);
 
-        let encrypted = magma.cipher(&message, CipherOperation::Encrypt, CipherMode::CTR_ACPKM);
+        let encrypted = magma.cipher(&message, &CipherOperation::Encrypt, &CipherMode::CTR_ACPKM);
         assert!(!encrypted.is_empty());
 
         let expected = [
@@ -1271,7 +1298,7 @@ mod tests {
         ];
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::CTR_ACPKM);
+        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CTR_ACPKM);
         assert_eq!(decrypted, message);
     }
 
@@ -1354,7 +1381,7 @@ mod tests {
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
         magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
 
-        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::OFB);
+        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::OFB);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -1364,7 +1391,7 @@ mod tests {
         expected.extend_from_slice(&ENCRYPTED4_OFB_GOST_R3413_2015.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::OFB);
+        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::OFB);
         assert_eq!(decrypted, source);
     }
 
@@ -1437,7 +1464,7 @@ mod tests {
         source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
         let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::CBC);
+        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CBC);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -1447,7 +1474,7 @@ mod tests {
         expected.extend_from_slice(&ENCRYPTED4_CBC_GOST_R3413_2015.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::CBC);
+        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CBC);
         assert_eq!(decrypted, source);
 
     }
@@ -1531,7 +1558,7 @@ mod tests {
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
         magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
 
-        let encrypted = magma.cipher(&source, CipherOperation::Encrypt, CipherMode::CFB);
+        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CFB);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -1541,7 +1568,7 @@ mod tests {
         expected.extend_from_slice(&ENCRYPTED4_CFB_GOST_R3413_2015.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, CipherOperation::Decrypt, CipherMode::CFB);
+        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CFB);
         assert_eq!(decrypted, source);
 
     }

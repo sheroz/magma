@@ -1,0 +1,11 @@
+[package]
+name = "cipher_magma"
+version = "0.5.0"
+edition = "2021"
+authors = ["Sheroz Khaydarov"]
+description = "Block Cipher Magma (GOST R 34.12-2015, former GOST 28147-89)"
+documentation = "https://docs.rs/cipher_magma"
+readme = "README.md"
+repository = "https://github.com/sheroz/magma"
+license = "MIT"
+keywords = ["cryptography", "block-cipher", "magma", "gost-r-34-12-2015", "gost-28147-89"]

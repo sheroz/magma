@@ -1,0 +1,16 @@
+[package]
+name = "magma_samples"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cipher_magma = { path = "../cipher_magma" }
+
+[dev-dependencies]
+
+criterion = "0.5"
+
+[[bench]]
+name = "magma_benchmark"
+harness = false
+
