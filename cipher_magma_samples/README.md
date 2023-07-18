@@ -1,4 +1,4 @@
-# Usage samples of Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
+# Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
 
 [![crates.io](https://img.shields.io/crates/v/cipher_magma)](https://crates.io/crates/cipher_magma)
 [![docs](https://img.shields.io/docsrs/cipher_magma)](https://docs.rs/cipher_magma)
@@ -28,7 +28,7 @@
 
 ## Usage
 
-Please look at [src/main.rs](src/main.rs)
+Please look at [cipher_magma_samples](https://github.com/sheroz/cipher_magma/tree/main/cipher_magma_samples/src/main.rs)
 
 ### Sample of block encryption
 
