@@ -426,9 +426,10 @@ impl Magma {
             let block = u64::from_be_bytes(array_u8);
 
             let ctr = iv_ctr.wrapping_add(chunk_index as u64);
-            let output = self.encrypt(ctr) ^ block;
+            let gamma = self.encrypt(ctr);
+            let output =  gamma ^ block;
 
-            result.extend_from_slice(&output.to_be_bytes());
+            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
         }
 
         result
@@ -459,7 +460,7 @@ impl Magma {
             let gamma = self.encrypt(ctr);
             let output = gamma ^ block;
 
-            result.extend_from_slice(&output.to_be_bytes());
+            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
 
             section_bits_processed += 64;
             if section_bits_processed >= Magma::CTR_ACPKM_SECTION_SIZE_N {
