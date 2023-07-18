@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/cipher_magma)](https://crates.io/crates/cipher_magma)
 [![docs](https://img.shields.io/docsrs/cipher_magma)](https://docs.rs/cipher_magma)
 [![build & test](https://github.com/sheroz/magma/actions/workflows/ci.yml/badge.svg)](https://github.com/sheroz/magma/actions/workflows/ci.yml)
-[![MIT](https://img.shields.io/github/license/sheroz/cipher_magma)](https://github.com/sheroz/magma/tree/main/LICENSE.txt)
+[![MIT](https://img.shields.io/github/license/sheroz/cipher_magma)](https://github.com/sheroz/magma/tree/main/cipher_magma/LICENSE.txt)
 
 ## Supported Cipher Modes
 
