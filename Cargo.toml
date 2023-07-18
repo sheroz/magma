@@ -1,5 +1,5 @@
 [workspace]
 members = [
     "cipher_magma",
-    "cipher_magma_samples"
+    "magma_samples"
 ]

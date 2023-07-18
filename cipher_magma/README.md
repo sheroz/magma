@@ -28,7 +28,7 @@
 
 ## Usage
 
-Please look at [cipher_magma_samples](https://github.com/sheroz/cipher_magma/tree/main/cipher_magma_samples/src/main.rs)
+Please look at [cipher_magma_samples](https://github.com/sheroz/magma/tree/main/magma_samples/src/main.rs)
 
 ### Sample of block encryption
 
