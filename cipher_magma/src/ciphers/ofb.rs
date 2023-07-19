@@ -1,5 +1,3 @@
-
-
 use std::collections::VecDeque;
 
 use crate::Magma;
@@ -88,7 +86,6 @@ mod tests {
     const ENCRYPTED3_OFB_GOST_R3413_2015: u64 = 0xa0f83062430e327e_u64;        
     const ENCRYPTED4_OFB_GOST_R3413_2015: u64 = 0xc824efb8bd4fdb05_u64;
 
-    #[test]
     #[test]
     fn ofb_steps_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
