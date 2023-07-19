@@ -34,6 +34,7 @@ pub mod ciphers;
 use std::collections::VecDeque;
 use cipher_mode::CipherMode;
 use ciphers::ecb::ECB;
+use ciphers::ctr::CTR;
 use crate::core::CipherBuffer;
 
 /// Block Cipher "Magma"
@@ -327,7 +328,7 @@ impl Magma {
             CipherOperation::Encrypt => {
                 match cipher_mode {
                     CipherMode::ECB => ECB::encrypt(&self, buf),
-                    CipherMode::CTR => self.cipher_ctr(buf),
+                    CipherMode::CTR => CTR::encrypt(&self, buf),
                     CipherMode::CTR_ACPKM => self.cipher_ctr_acpkm(buf),
                     CipherMode::OFB => self.cipher_ofb(buf),
                     CipherMode::CBC => self.cipher_cbc_encrypt(buf),
@@ -338,7 +339,7 @@ impl Magma {
             CipherOperation::Decrypt => {
                 match cipher_mode {
                     CipherMode::ECB => ECB::decrypt(&self, buf),
-                    CipherMode::CTR => self.cipher_ctr(buf),
+                    CipherMode::CTR => CTR::decrypt(&self, buf),
                     CipherMode::CTR_ACPKM => self.cipher_ctr_acpkm(buf),
                     CipherMode::OFB => self.cipher_ofb(buf),
                     CipherMode::CBC => self.cipher_cbc_decrypt(buf),
@@ -355,33 +356,6 @@ impl Magma {
                 }
             },
         }
-    }
-
-    /// Returns encrypted/decrypted result as `Vec<u8>`
-    /// 
-    /// Implements Counter Encryption (CTR) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 14, Section 5.2
-    fn cipher_ctr(&mut self, buf: &[u8]) -> Vec<u8> {
-
-        let iv_ctr = self.prepare_vector_ctr();
-        let mut result = Vec::<u8>::with_capacity(buf.len());
-
-        for (chunk_index, chunk) in buf.chunks(8).enumerate() {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
-
-            let ctr = iv_ctr.wrapping_add(chunk_index as u64);
-            let gamma = self.encrypt(ctr);
-            let output =  gamma ^ block;
-
-            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
-        }
-
-        result
     }
         
     /// Returns encrypted/decrypted result as `Vec<u8>`
@@ -1113,55 +1087,6 @@ mod tests {
         mac_vec.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
         let mac = u32::from_be_bytes(array_u8);
         assert_eq!(mac, 0x154e7210_u32);
-    }
-
-    #[test]
-    fn ctr_steps_gost_r_34_13_2015() {
-        // Test vectors GOST R 34.13-2015
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 36, Section A.2.2
-
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-
-        let iv = 0x12345678_u32;
-
-        let iv_extended = (iv as u64 ) << 32;
-
-        let mut pass_count = 0;
-        let p1 = PLAINTEXT1_GOST_R3413_2015;
-        let i1 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i1, 0x1234567800000000_u64);
-        let o1 = magma.encrypt(i1);
-        assert_eq!(o1, 0xdc46e167aba4b365_u64);
-        let c1 = p1 ^ o1;
-        assert_eq!(c1, ENCRYPTED1_CTR_GOST_R3413_2015);
-
-        pass_count += 1;
-        let p2 = PLAINTEXT2_GOST_R3413_2015;
-        let i2 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i2, 0x1234567800000001_u64);
-        let o2 = magma.encrypt(i2);
-        assert_eq!(o2, 0xe571ca972ef0c049_u64);
-        let c2 = p2 ^ o2;
-        assert_eq!(c2, ENCRYPTED2_CTR_GOST_R3413_2015);
-
-        pass_count += 1;
-        let p3 = PLAINTEXT3_GOST_R3413_2015;
-        let i3 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i3, 0x1234567800000002_u64);
-        let o3 = magma.encrypt(i3);
-        assert_eq!(o3, 0x59f57da6601ad9a3_u64);
-        let c3 = p3 ^ o3;
-        assert_eq!(c3, ENCRYPTED3_CTR_GOST_R3413_2015);
-
-        pass_count += 1;
-        let p4 = PLAINTEXT4_GOST_R3413_2015;
-        let i4 = iv_extended.wrapping_add(pass_count);
-        assert_eq!(i4, 0x1234567800000003_u64);
-        let o4 = magma.encrypt(i4);
-        assert_eq!(o4, 0xdf9cf61bbce7df6c_u64);
-        let c4 = p4 ^ o4;
-        assert_eq!(c4, ENCRYPTED4_CTR_GOST_R3413_2015);
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use crate::Magma;
 
-pub trait CipherBlock <T>{
-    fn encrypt(block: T) -> T;
-    fn decrypt(block: T) -> T;
+pub trait CipherBlock {
+    fn encrypt(block: u64) -> u64;
+    fn decrypt(block: u64) -> u64;
 }
 
 pub trait CipherBuffer {
