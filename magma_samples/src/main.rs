@@ -1,4 +1,4 @@
-use cipher_magma::{Magma, CipherOperation, CipherMode};
+use cipher_magma::{Magma, CipherOperation, cipher_mode::CipherMode};
 
 fn main() {
     println!("\n***\n\nSample of block encryption:");
@@ -61,7 +61,7 @@ fn sample_encrypt_text() {
 
     let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
 
-    if Magma::require_padding(&cipher_mode)
+    if cipher_mode.has_padding()
     {
         // remove padding bytes
         decrypted.truncate(source_bytes.len());

@@ -27,7 +27,10 @@
     GOST 28147-89 IMIT
 */
 
+pub mod cipher_mode;
+
 use std::collections::VecDeque;
+use cipher_mode::CipherMode;
 
 /// Block Cipher "Magma"
 pub struct Magma {
@@ -47,45 +50,6 @@ pub enum CipherOperation {
 
     /// Message Authentication Code (MAC) Generation
     MessageAuthentication
-}
-
-/// **Cipher Mode**
-/// 
-/// # Supported Cipher Modes
-/// 
-/// * **ECB** - Electronic Codebook Mode
-/// * **CTR** - Counter Encryption Mode
-/// * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html)
-/// * **OFB** - Output Feedback Mode
-/// * **CBC** - Cipher Block Chaining Mode
-/// * **CFB** - Cipher Feedback Mode
-/// * **MAC** - Message Authentication Code Generation Mode
-/// 
-/// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-/// 
-/// [CTR-ACPKM](https://www.rfc-editor.org/rfc/rfc8645.html)
-pub enum CipherMode {
-    /// Electronic Codebook (ECB) Mode
-    ECB, 
-
-    /// Counter Encryption (CTR) Mode
-    CTR, 
-
-    /// Counter Encryption (CTR-ACPKM) Mode
-    #[allow(non_camel_case_types)]
-    CTR_ACPKM,
-
-    /// Output Feedback (OFB) Mode
-    OFB,
-
-    /// Cipher Block Chaining (CBC) Mode
-    CBC,
-
-    /// Cipher Feedback Mode (CFB)
-    CFB,
-
-    /// Message Authentication Code (MAC) Generation Mode
-    MAC 
 }
 
 impl Magma {
@@ -701,24 +665,6 @@ impl Magma {
 
         (k1, k2)
     }
-
-    /// Returns a boolean value indicating whether the given `cipher_mode` require padding
-    /// 
-    /// Some cipher modes require the size of the input plaintext to be multiple of the block size,
-    /// so input plaintext may have to be padded before encryption to bring it to the required length.
-    /// 
-    /// # Argument
-    /// * cipher_mode - a reference to `CipherMode`
-    pub fn require_padding(cipher_mode: &CipherMode) -> bool
-    {
-        match cipher_mode {
-            CipherMode::CTR => false,
-            CipherMode::CTR_ACPKM => false,
-            CipherMode::OFB => false,
-            CipherMode::CFB => false,
-            _ => true
-        }
-    }
 }
 
 #[cfg(test)]
@@ -842,17 +788,6 @@ mod tests {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-key-schedule-2
         assert_eq!(Magma::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), 0x4ee901e5c2d8ca3d_u64);
-    }
-
-    #[test]
-    fn has_padding_r_34_13_2015() {
-        assert_eq!(Magma::require_padding(&CipherMode::ECB), true);
-        assert_eq!(Magma::require_padding(&CipherMode::CTR), false);
-        assert_eq!(Magma::require_padding(&CipherMode::CTR_ACPKM), false);
-        assert_eq!(Magma::require_padding(&CipherMode::OFB), false);
-        assert_eq!(Magma::require_padding(&CipherMode::CBC), true);
-        assert_eq!(Magma::require_padding(&CipherMode::CFB), false);
-        assert_eq!(Magma::require_padding(&CipherMode::MAC), true);
     }
 
     #[test]
@@ -1099,7 +1034,7 @@ mod tests {
         let mut decrypted = magma.cipher(&encrypted,&CipherOperation::Decrypt, &cipher_mode);
         assert!(decrypted.len() >= encrypted.len());
 
-        if Magma::require_padding(&cipher_mode)
+        if cipher_mode.has_padding()
         {
             // remove padding bytes
             decrypted.truncate(txt_bytes.len());

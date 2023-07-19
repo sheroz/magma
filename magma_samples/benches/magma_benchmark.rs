@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use cipher_magma::{Magma, CipherOperation, CipherMode};
+use cipher_magma::{Magma, CipherOperation, cipher_mode::CipherMode};
 
 fn magma_block_benchmark(c: &mut Criterion) {
     let magma = Magma::new();
