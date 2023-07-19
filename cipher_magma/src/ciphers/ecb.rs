@@ -6,11 +6,11 @@ pub struct ECB;
 impl CipherBuffer for ECB {
     /// Returns encrypted result as `Vec<u8>`
     /// 
-    /// Implements Electronic Codebook (ECB) Mode
+    /// Implements buffer encrypting in Electronic Codebook (ECB) Mode
     /// 
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     /// 
-    /// Page 13, Section 5.1
+    /// Page 13, Section 5.1.1
     fn encrypt(core: &Magma, buf: &[u8]) -> Vec<u8> {
         let m_invoke = Magma::encrypt;
         ECB::cipher_ecb(core, buf, m_invoke)
@@ -18,11 +18,11 @@ impl CipherBuffer for ECB {
 
     /// Returns decrypted result as `Vec<u8>`
     /// 
-    /// Implements Electronic Codebook (ECB) Mode
+    /// Implements buffer decrypting in Electronic Codebook (ECB) Mode
     /// 
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     /// 
-    /// Page 13, Section 5.1
+    /// Page 13, Section 5.1.2
     fn decrypt(core: &Magma, buf: &[u8]) -> Vec<u8> {
         let m_invoke = Magma::decrypt;
         ECB::cipher_ecb(core, buf, m_invoke)
@@ -91,6 +91,7 @@ mod tests {
         expected.extend_from_slice(&ENCRYPTED4_ECB_GOST_R3413_2015.to_be_bytes());
         assert_eq!(encrypted, expected);
     }
+    
     #[test]
     fn decrypt_ecb_gost_r_34_13_2015() {
         let mut source = Vec::<u8>::new();
