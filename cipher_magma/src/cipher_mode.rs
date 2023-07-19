@@ -1,18 +1,14 @@
 /// **Cipher Mode**
 /// 
-/// # Supported Cipher Modes
+/// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// * **ECB** - Electronic Codebook Mode
 /// * **CTR** - Counter Encryption Mode
-/// * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html)
+/// * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html), [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
 /// * **OFB** - Output Feedback Mode
 /// * **CBC** - Cipher Block Chaining Mode
 /// * **CFB** - Cipher Feedback Mode
 /// * **MAC** - Message Authentication Code Generation Mode
-/// 
-/// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-/// 
-/// [CTR-ACPKM](https://www.rfc-editor.org/rfc/rfc8645.html)
 pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode
     ECB, 
@@ -38,13 +34,10 @@ pub enum CipherMode {
 }
 
 impl CipherMode {
-    /// Returns a boolean value indicating whether the `cipher_mode` requires padding
+    /// Returns a boolean value indicating whether the cipher mode requires padding
     /// 
     /// Some cipher modes require the size of the input plaintext to be multiple of the block size,
     /// so input plaintext may have to be padded before encryption to bring it to the required length.
-    /// 
-    /// # Argument
-    /// * cipher_mode - a reference to `CipherMode`
     pub fn has_padding(&self) -> bool
     {
         match *self {

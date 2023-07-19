@@ -27,10 +27,14 @@
     GOST 28147-89 IMIT
 */
 
+pub mod core;
 pub mod cipher_mode;
+pub mod ciphers;
 
 use std::collections::VecDeque;
 use cipher_mode::CipherMode;
+use ciphers::ecb::ECB;
+use crate::core::CipherBuffer;
 
 /// Block Cipher "Magma"
 pub struct Magma {
@@ -322,7 +326,7 @@ impl Magma {
         match cipher_operation {
             CipherOperation::Encrypt => {
                 match cipher_mode {
-                    CipherMode::ECB => self.cipher_ecb(buf, Magma::encrypt),
+                    CipherMode::ECB => ECB::encrypt(&self, buf),
                     CipherMode::CTR => self.cipher_ctr(buf),
                     CipherMode::CTR_ACPKM => self.cipher_ctr_acpkm(buf),
                     CipherMode::OFB => self.cipher_ofb(buf),
@@ -333,7 +337,7 @@ impl Magma {
             },
             CipherOperation::Decrypt => {
                 match cipher_mode {
-                    CipherMode::ECB => self.cipher_ecb(buf, Magma::decrypt),
+                    CipherMode::ECB => ECB::decrypt(&self, buf),
                     CipherMode::CTR => self.cipher_ctr(buf),
                     CipherMode::CTR_ACPKM => self.cipher_ctr_acpkm(buf),
                     CipherMode::OFB => self.cipher_ofb(buf),
@@ -351,25 +355,6 @@ impl Magma {
                 }
             },
         }
-    }
-
-    /// Returns encrypted/decrypted result as `Vec<u8>`
-    /// 
-    /// Implements Electronic Codebook (ECB) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 13, Section 5.1
-    fn cipher_ecb(&mut self, buf: &[u8], m_invoke: fn(&Magma, u64) -> u64) -> Vec<u8> {
-        let mut result = Vec::<u8>::with_capacity(buf.len());
-        for chunk in buf.chunks(8) {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
-            let output = m_invoke(&self, block);
-            result.extend_from_slice(&output.to_be_bytes());
-        }
-        result
     }
 
     /// Returns encrypted/decrypted result as `Vec<u8>`
@@ -428,7 +413,7 @@ impl Magma {
 
             section_bits_processed += 64;
             if section_bits_processed >= Magma::CTR_ACPKM_SECTION_SIZE_N {
-                let section_key = self.cipher_ecb(&Magma::CTR_ACPKM_D, Magma::encrypt);
+                let section_key = self.cipher(&Magma::CTR_ACPKM_D, &CipherOperation::Encrypt, &CipherMode::ECB);
                 self.set_key_from_bytes(&section_key);
                 section_bits_processed = 0;
             }
