@@ -33,14 +33,14 @@ pub mod ciphers;
 
 use crate::core::CipherBuffer;
 
-use std::collections::VecDeque;
 use cipher_mode::CipherMode;
 use ciphers::ecb::ECB;
 use ciphers::ctr::CTR;
 use ciphers::ctr_acpkm::CTR_ACPKM;
 use ciphers::ofb::OFB;
 use ciphers::cbc::CBC;
-
+use ciphers::cfb::CFB;
+use ciphers::mac::MAC;
 
 /// Block Cipher "Magma"
 pub struct Magma {
@@ -337,7 +337,7 @@ impl Magma {
                     CipherMode::CTR_ACPKM => CTR_ACPKM::encrypt(self, buf),
                     CipherMode::OFB => OFB::encrypt(self, buf),
                     CipherMode::CBC => CBC::encrypt(self, buf),
-                    CipherMode::CFB => self.cipher_cfb_encrypt(buf),
+                    CipherMode::CFB => CFB::encrypt(self, buf),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in encrypting operation!")
                 }
             },
@@ -348,14 +348,14 @@ impl Magma {
                     CipherMode::CTR_ACPKM => CTR_ACPKM::decrypt(self, buf),
                     CipherMode::OFB => OFB::decrypt(self, buf),
                     CipherMode::CBC => CBC::decrypt(self, buf),
-                    CipherMode::CFB => self.cipher_cfb_decrypt(buf),
+                    CipherMode::CFB => CFB::decrypt(self, buf),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in decrypting operation!")
                 }
             },
             CipherOperation::MessageAuthentication => {
                 match cipher_mode {
                     CipherMode::MAC => {
-                        self.cipher_mac(buf).to_be_bytes().to_vec()
+                        MAC::mac(self, buf).to_be_bytes().to_vec()
                      },
                     _ => panic!("Only CipherMode::MAC can be used in MessageAuthentication!")
                 }
@@ -363,140 +363,6 @@ impl Magma {
         }
     }
 
-    /// Returns encrypted result as `Vec<u8>`
-    /// 
-    /// Implements Cipher Feedback (CFB) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 23, Section 5.5.1
-    fn cipher_cfb_encrypt(&mut self, buf: &[u8]) -> Vec<u8> {
-
-        self.ensure_iv_not_empty();
-        let mut register_r = VecDeque::from(self.iv.clone());
-
-        let mut result = Vec::<u8>::with_capacity(buf.len());
-        for chunk in buf.chunks(8) {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
-
-            let register_n= register_r.pop_front().unwrap();
-            let output = self.encrypt(register_n) ^ block;
-
-            register_r.push_back(output);
-
-            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
-        }
-
-        result
-    }
-
-    /// Returns decrypted result as `Vec<u8>`
-    /// 
-    /// Implements Cipher Feedback (CFB) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 24, Section 5.5.2
-    fn cipher_cfb_decrypt(&mut self, buf: &[u8]) -> Vec<u8> {
-
-        self.ensure_iv_not_empty();
-        let mut register_r = VecDeque::from(self.iv.clone());
-
-        let mut result = Vec::<u8>::with_capacity(buf.len());
-        for chunk in buf.chunks(8) {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
-
-            let register_n= register_r.pop_front().unwrap();
-            let output = self.encrypt(register_n) ^ block;
-
-            register_r.push_back(block);
-
-            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
-        }
-
-        result
-    }
-
-    /// Returns the Message Authentication Code (MAC) value
-    /// 
-    /// # Arguments
-    /// * msg_buf - a slice of `&[u8]` data
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 26, Section 5.6
-    pub fn cipher_mac(&mut self, msg_buf: &[u8]) -> u32 {
-
-        let (k1, k2) = self.generate_cmac_subkeys();
-        let k_n = if (msg_buf.len() % 8) == 0 { k1 } else { k2 };
-
-        let mut block_feedback = 0u64;
-
-        let mut chunks = msg_buf.chunks(8).peekable();
-        while let Some(chunk) = chunks.next()  {
-
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-
-            let last_round = chunks.peek().is_none();
-            if last_round {
-                let chunk_len = chunk.len();
-                if chunk_len < 8 {
-                    // Uncomplete chunk, needs padding
-                    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-                    // Page 11, Section 4.1.3
-                    // Padding the remaining bytes:
-                    // 1. Mark the starting byte with 0x80
-                    // 2. Other bytes already padded with 0x00
-                    array_u8[chunk_len] = 0x80_u8;
-                }
-            }
-
-            let mut block_in = u64::from_be_bytes(array_u8);
-
-            block_in ^= block_feedback;
-
-            if last_round {
-                block_in ^= k_n;
-            }
-
-            block_feedback = self.encrypt(block_in);
-        }
-
-        let (mac, _) = Magma::u64_split(block_feedback);
-
-        mac
-    }
-
-    /// Returns subkeys for CMAC as `(u64, u64)`
-    /// 
-    /// Key generation algorithm is based on: 
-    /// 
-    /// [OMAC1 a.k.a CMAC](https://en.wikipedia.org/wiki/One-key_MAC)
-    fn generate_cmac_subkeys(&self) -> (u64, u64){
-        let r = self.encrypt(0x0_u64);
-
-        let b64 = 0x1b_u64;
-        let mcb_u64 = 0x80000000_00000000_u64;
-
-        let k1 = if (r & mcb_u64) == 0 {
-            r << 1
-        } else {
-            (r << 1) ^ b64
-        };
-
-        let k2 = if (k1 & mcb_u64) == 0 {
-            k1 << 1
-        } else {
-            (k1 << 1) ^ b64
-        };
-
-        (k1, k2)
-    }
 }
 
 #[cfg(test)]
@@ -559,6 +425,12 @@ mod tests {
     const ENCRYPTED2_CFB_GOST_R3413_2015:u64 = 0x0d46644c1f9a089c_u64;
     const ENCRYPTED3_CFB_GOST_R3413_2015:u64 = 0x24bdd2035315d38b_u64;
     const ENCRYPTED4_CFB_GOST_R3413_2015:u64 = 0xbcc0321421075505_u64;
+
+    // Test vectors GOST R 34.13-2015
+    // Generating MAC
+    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+    // Page 40, Section A.2.6
+    const MAC_GOST_R3413_2015: u32 = 0x154e7210_u32;
 
     #[test]
     fn default_initialization() {
@@ -849,120 +721,6 @@ mod tests {
     }
 
     #[test]
-    fn cipher_text_ecb() {
-        let txt = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-            Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
-            Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
-            Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. \
-            Quisque iaculis est et est volutpat posuere.";
-
-        let txt_bytes = txt.as_bytes();
-
-        let cipher_mode = CipherMode::ECB;
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = magma.cipher(txt_bytes, &CipherOperation::Encrypt, &cipher_mode);
-        assert!(!encrypted.is_empty());
-
-        let mut decrypted = magma.cipher(&encrypted,&CipherOperation::Decrypt, &cipher_mode);
-        assert!(decrypted.len() >= encrypted.len());
-
-        if cipher_mode.has_padding()
-        {
-            // remove padding bytes
-            decrypted.truncate(txt_bytes.len());
-        }
-
-        let decrypted_text = String::from_utf8(decrypted).unwrap();
-        assert_eq!(decrypted_text, txt);
-    }
-
-    #[test]
-    fn cmac_subkeys_gost_r_34_13_2015() {
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let (k1, k2) = magma.generate_cmac_subkeys();
-        assert_eq!(k1, 0x5f459b3342521424_u64);
-        assert_eq!(k2, 0xbe8b366684a42848_u64);
-    }
-
-    #[test]
-    fn mac_steps_gost_r_34_13_2015() {
-        // Test vectors GOST R 34.13-2015
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 40, Section A.2.6
-
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-
-        let (k1, k2) = magma.generate_cmac_subkeys();
-        assert_eq!(k1, 0x5f459b3342521424_u64);
-        assert_eq!(k2, 0xbe8b366684a42848_u64);
-
-        let k_n = k1;
-
-        let i1 = PLAINTEXT1_GOST_R3413_2015;
-        let o1 = magma.encrypt(i1);
-        assert_eq!(o1, ENCRYPTED1_ECB_GOST_R3413_2015);
-
-        let i2 = o1 ^ PLAINTEXT2_GOST_R3413_2015;
-        assert_eq!(i2, 0xf053f8006cebef80_u64);
-        let o2 = magma.encrypt(i2);
-        assert_eq!(o2, 0xc89ed814fd5e18e9_u64);
-        
-        let i3 = o2 ^ PLAINTEXT3_GOST_R3413_2015;
-        assert_eq!(i3, 0x8206233a9af61aa5_u64);
-        let o3 = magma.encrypt(i3);
-        assert_eq!(o3, 0xf739b18d34289b00_u64);
-
-        let i4 = o3 ^ PLAINTEXT4_GOST_R3413_2015 ^ k_n;
-        assert_eq!(i4, 0x216e6a2561cff165_u64);
-        let o4 = magma.encrypt(i4);
-        assert_eq!(o4, 0x154e72102030c5bb_u64);
-
-        let (mac, _) = Magma::u64_split(o4);
-        assert_eq!(mac, 0x154e7210_u32);
-    }
-
-    #[test]
-    fn cipher_mac_core_gost_r_34_13_2015() {
-        // Test vectors GOST R 34.13-2015
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 40, Section A.2.6
-
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-
-        let mut src_buf = Vec::<u8>::new();
-        src_buf.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
-
-        let mac = magma.cipher_mac(&src_buf);
-        assert_eq!(mac, 0x154e7210_u32);
-    }
-
-    #[test]
-    fn cipher_mac_gost_r_34_13_2015() {
-        // Test vectors GOST R 34.13-2015
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 40, Section A.2.6
-
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-
-        let mut src_buf = Vec::<u8>::new();
-        src_buf.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
-
-        let mac_vec = magma.cipher(&src_buf, &CipherOperation::MessageAuthentication, &CipherMode::MAC);
-        assert_eq!(mac_vec.len(), 4);
-
-        let mut array_u8 = [0u8;4];
-        mac_vec.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-        let mac = u32::from_be_bytes(array_u8);
-        assert_eq!(mac, 0x154e7210_u32);
-    }
-
-    #[test]
     fn cipher_ctr_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
@@ -1088,67 +846,6 @@ mod tests {
     }
 
     #[test]
-    fn cfb_steps_gost_r_34_13_2015() {
-        // Test vectors GOST R 34.13-2015
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 39, Section A.2.5
-
-        // s = n = 64, m = 2n = 128
-        // IV = 1234567890abcdef234567890abcdef1
-        let iv = 0x1234567890abcdef234567890abcdef1_u128;
-
-        // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-        // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
-        let mut r = [Magma::IV_GOST_R3413_2015[0], Magma::IV_GOST_R3413_2015[1]];
-        let mut v1 = Vec::from(r[0].to_be_bytes());
-        v1.extend_from_slice(&r[1].to_be_bytes());
-        assert_eq!(iv.to_be_bytes(), v1.as_slice());
-
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-
-        let p1 = PLAINTEXT1_GOST_R3413_2015;
-        let i1 = r[0];
-        assert_eq!(i1, 0x1234567890abcdef_u64);
-        let o1 = magma.encrypt(i1);
-        assert_eq!(o1, 0x49e910895a8336da_u64);
-        let c1 = o1 ^ p1;
-        assert_eq!(c1, ENCRYPTED1_CFB_GOST_R3413_2015);
-
-        r[0] = r[1];
-        r[1] = c1;
-
-        let p2 = PLAINTEXT2_GOST_R3413_2015;
-        let i2 = r[0];
-        assert_eq!(i2, 0x234567890abcdef1_u64);
-        let o2 = magma.encrypt(i2);
-        assert_eq!(o2, 0xd612a348e78295bc_u64);
-        let c2 = o2 ^ p2;
-        assert_eq!(c2, ENCRYPTED2_CFB_GOST_R3413_2015);
-
-        r[0] = r[1];
-        r[1] = c2;
-
-        let p3 = PLAINTEXT3_GOST_R3413_2015;
-        let i3 = r[0];
-        assert_eq!(i3, 0xdb37e0e266903c83_u64);
-        let o3 = magma.encrypt(i3);
-        assert_eq!(o3, 0x6e25292d34bdd1c7_u64);
-        let c3 = o3 ^ p3;
-        assert_eq!(c3, ENCRYPTED3_CFB_GOST_R3413_2015);
-
-        r[0] = r[1];
-        r[1] = c3;
-
-        let p4 = PLAINTEXT4_GOST_R3413_2015;
-        let i4 = r[0];
-        assert_eq!(i4, 0x0d46644c1f9a089c_u64);
-        let o4 = magma.encrypt(i4);
-        assert_eq!(o4, 0x35d2728f36b22b44_u64);
-        let c4 = o4 ^ p4;
-        assert_eq!(c4, ENCRYPTED4_CFB_GOST_R3413_2015);
-    }
-
-    #[test]
     fn cipher_cfb_gost_r_34_13_2015() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
@@ -1178,6 +875,28 @@ mod tests {
 
         let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CFB);
         assert_eq!(decrypted, source);
+    }
 
+    #[test]
+    fn cipher_mac_gost_r_34_13_2015() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 40, Section A.2.6
+
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+
+        let mut src_buf = Vec::<u8>::new();
+        src_buf.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
+        src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+
+        let mac_vec = magma.cipher(&src_buf, &CipherOperation::MessageAuthentication, &CipherMode::MAC);
+        assert_eq!(mac_vec.len(), 4);
+
+        let mut array_u8 = [0u8;4];
+        mac_vec.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+        let mac = u32::from_be_bytes(array_u8);
+        assert_eq!(mac, MAC_GOST_R3413_2015);
     }
 }

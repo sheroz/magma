@@ -1,4 +1,4 @@
-use cipher_magma::{Magma, CipherOperation, cipher_mode::CipherMode};
+use cipher_magma::{Magma, CipherOperation, cipher_mode::CipherMode, ciphers::mac::MAC};
 
 fn main() {
     println!("\n***\n\nSample of block encryption:");
@@ -89,7 +89,7 @@ fn sample_generate_mac() {
     println!("Message:\n{:x?}\n", message);
 
     let mut magma = Magma::with_key(&security_key);
-    let mac = magma.cipher_mac(&message);
+    let mac = MAC::mac(&mut magma, &message);
     println!("Generated MAC:\n{:x}\n", mac);
 }
 

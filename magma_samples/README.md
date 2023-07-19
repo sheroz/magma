@@ -122,7 +122,7 @@ Output:
     println!("Message:\n{:x?}\n", message);
 
     let mut magma = Magma::with_key(&security_key);
-    let mac = magma.cipher_mac(&message);
+    let mac = MAC::mac(&mut magma, &message);
     println!("Generated MAC:\n{:x}\n", mac);
 
 Output:
