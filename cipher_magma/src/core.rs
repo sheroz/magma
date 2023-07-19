@@ -6,6 +6,6 @@ pub trait CipherBlock {
 }
 
 pub trait CipherBuffer {
-    fn encrypt(core: &Magma, buf: &[u8]) -> Vec<u8>;
-    fn decrypt(core: &Magma, buf: &[u8]) -> Vec<u8>;
+    fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8>;
+    fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8>;
 }

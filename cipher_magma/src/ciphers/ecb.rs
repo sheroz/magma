@@ -11,7 +11,7 @@ impl CipherBuffer for ECB {
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     /// 
     /// Page 13, Section 5.1.1
-    fn encrypt(core: &Magma, buf: &[u8]) -> Vec<u8> {
+    fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
         let m_invoke = Magma::encrypt;
         ECB::cipher_ecb(core, buf, m_invoke)
     }
@@ -23,7 +23,7 @@ impl CipherBuffer for ECB {
     /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
     /// 
     /// Page 13, Section 5.1.2
-    fn decrypt(core: &Magma, buf: &[u8]) -> Vec<u8> {
+    fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
         let m_invoke = Magma::decrypt;
         ECB::cipher_ecb(core, buf, m_invoke)
     }
@@ -80,8 +80,8 @@ mod tests {
         source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
         source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
-        let encrypted = ECB::encrypt(&magma, &source);
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let encrypted = ECB::encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -100,7 +100,7 @@ mod tests {
         source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
         source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
-        let magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
 
         let mut encrypted = Vec::<u8>::new();
         encrypted.extend_from_slice(&ENCRYPTED1_ECB_GOST_R3413_2015.to_be_bytes());
@@ -108,7 +108,7 @@ mod tests {
         encrypted.extend_from_slice(&ENCRYPTED3_ECB_GOST_R3413_2015.to_be_bytes());
         encrypted.extend_from_slice(&ENCRYPTED4_ECB_GOST_R3413_2015.to_be_bytes());
 
-        let decrypted = ECB::decrypt(&magma, &encrypted);
+        let decrypted = ECB::decrypt(&mut magma, &encrypted);
         assert_eq!(decrypted, source);
     }    
 }

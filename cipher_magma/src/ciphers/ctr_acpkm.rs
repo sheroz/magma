@@ -1,0 +1,145 @@
+use crate::Magma;
+use crate::core::CipherBuffer;
+use crate::CipherOperation;
+use crate::CipherMode;
+
+#[allow(non_camel_case_types)]
+pub struct CTR_ACPKM;
+
+impl CipherBuffer for CTR_ACPKM {
+    /// Returns encrypted result as `Vec<u8>`
+    /// 
+    /// Implements buffer encrypting in Counter Encryption (CTR_ACPKM) Mode
+    /// 
+    /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
+    /// 
+    /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
+    fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+        CTR_ACPKM::cipher_ctr_acpkm(core, buf)
+    }
+
+    /// Returns decrypted result as `Vec<u8>`
+    /// 
+    /// Implements buffer decrypting in Counter Encryption (CTR_ACPKM) Mode
+    /// 
+    /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
+    /// 
+    /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
+    fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+        CTR_ACPKM::cipher_ctr_acpkm(core, buf)
+    }
+}
+
+impl CTR_ACPKM {
+    /// Returns encrypted/decrypted as `Vec<u8>`
+    /// 
+    /// Implements Counter Encryption (CTR_ACPKM) Mode
+    /// 
+    /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
+    /// 
+    /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
+    fn cipher_ctr_acpkm(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+
+        let iv_ctr = core.prepare_vector_ctr();
+        let mut result = Vec::<u8>::with_capacity(buf.len());
+
+        let original_key = core.cipher_key;
+        let mut section_bits_processed = 0;
+
+        for (chunk_index, chunk) in buf.chunks(8).enumerate() {
+            let mut array_u8 = [0u8;8];
+            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+            let block = u64::from_be_bytes(array_u8);
+
+            let ctr = iv_ctr.wrapping_add(chunk_index as u64);
+
+            let gamma = core.encrypt(ctr);
+            let output = gamma ^ block;
+
+            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
+
+            section_bits_processed += 64;
+            if section_bits_processed >= Magma::CTR_ACPKM_SECTION_SIZE_N {
+                let section_key = core.cipher(&Magma::CTR_ACPKM_D, &CipherOperation::Encrypt, &CipherMode::ECB);
+                core.set_key_from_bytes(&section_key);
+                section_bits_processed = 0;
+            }
+        }
+
+        // restore the original cipher key
+        core.set_key(&original_key);
+
+        result
+    }
+}
+
+#[cfg(test)] 
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn encrypt_ctr_acpkm_r_1323565_1_017_2018() {
+        // Test Vectors CTR-ACPKM
+        // Р 1323565.1.017—2018
+        // https://standartgost.ru/g/%D0%A0_1323565.1.017-2018
+        // Page 11
+
+        let cipher_key = [
+            0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+            0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF
+        ];
+
+        let message = [
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x00, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88,
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xEE, 0xFF, 0x0A,
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xEE, 0xFF, 0x0A, 0x00,
+            0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99            
+        ];
+
+        let mut magma = Magma::new();
+        magma.set_key_from_bytes(&cipher_key);
+        let encrypted = CTR_ACPKM::encrypt(&mut magma, &message);
+        assert!(!encrypted.is_empty());
+
+        let expected = [
+            0x2A, 0xB8, 0x1D, 0xEE, 0xEB, 0x1E, 0x4C, 0xAB, 0x68, 0xE1, 0x04, 0xC4, 0xBD, 0x6B, 0x94, 0xEA,
+            0xC7, 0x2C, 0x67, 0xAF, 0x6C, 0x2E, 0x5B, 0x6B, 0x0E, 0xAF, 0xB6, 0x17, 0x70, 0xF1, 0xB3, 0x2E,
+            0xA1, 0xAE, 0x71, 0x14, 0x9E, 0xED, 0x13, 0x82, 0xAB, 0xD4, 0x67, 0x18, 0x06, 0x72, 0xEC, 0x6F,
+            0x84, 0xA2, 0xF1, 0x5B, 0x3F, 0xCA, 0x72, 0xC1
+        ];
+        assert_eq!(encrypted, expected);
+    }
+
+    #[test]
+    fn decrypt_ctr_acpkm_r_1323565_1_017_2018() {
+        // Test Vectors CTR-ACPKM
+        // Р 1323565.1.017—2018
+        // https://standartgost.ru/g/%D0%A0_1323565.1.017-2018
+        // Page 11
+
+        let cipher_key = [
+            0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+            0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF
+        ];
+
+        let message = [
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x00, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88,
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xEE, 0xFF, 0x0A,
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xEE, 0xFF, 0x0A, 0x00,
+            0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99            
+        ];
+
+        let encrypted = [
+            0x2A, 0xB8, 0x1D, 0xEE, 0xEB, 0x1E, 0x4C, 0xAB, 0x68, 0xE1, 0x04, 0xC4, 0xBD, 0x6B, 0x94, 0xEA,
+            0xC7, 0x2C, 0x67, 0xAF, 0x6C, 0x2E, 0x5B, 0x6B, 0x0E, 0xAF, 0xB6, 0x17, 0x70, 0xF1, 0xB3, 0x2E,
+            0xA1, 0xAE, 0x71, 0x14, 0x9E, 0xED, 0x13, 0x82, 0xAB, 0xD4, 0x67, 0x18, 0x06, 0x72, 0xEC, 0x6F,
+            0x84, 0xA2, 0xF1, 0x5B, 0x3F, 0xCA, 0x72, 0xC1
+        ];
+
+        let mut magma = Magma::new();
+        magma.set_key_from_bytes(&cipher_key);
+        let decrypted = CTR_ACPKM::decrypt(&mut magma, &encrypted);
+        assert_eq!(decrypted, message);
+    }
+}
