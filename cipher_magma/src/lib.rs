@@ -505,22 +505,22 @@ mod tests {
         // Test vectors for GOST 28147-89
         // https://www.rfc-editor.org/rfc/rfc5831#section-7
 
-        use crypto_vectors::gost::rfc5830;
+        use crypto_vectors::gost::rfc5831;
 
         let mut magma = Magma::new();
         magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
-        magma.set_key(&rfc5830::CIPHER_KEY1);
-        assert_eq!(magma.encrypt(rfc5830::PLAINTEXT), rfc5830::CIPHERTEXT1);
+        magma.set_key(&rfc5831::CIPHER_KEY1);
+        assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT1);
 
-        magma.set_key(&rfc5830::CIPHER_KEY2);
-        assert_eq!(magma.encrypt(rfc5830::PLAINTEXT), rfc5830::CIPHERTEXT2);
+        magma.set_key(&rfc5831::CIPHER_KEY2);
+        assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT2);
 
-        magma.set_key(&rfc5830::CIPHER_KEY3);
-        assert_eq!(magma.encrypt(rfc5830::PLAINTEXT), rfc5830::CIPHERTEXT3);
+        magma.set_key(&rfc5831::CIPHER_KEY3);
+        assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT3);
 
-        magma.set_key(&rfc5830::CIPHER_KEY4);
-        assert_eq!(magma.encrypt(rfc5830::PLAINTEXT), rfc5830::CIPHERTEXT4);
+        magma.set_key(&rfc5831::CIPHER_KEY4);
+        assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT4);
     }
 
     #[test]
@@ -528,22 +528,22 @@ mod tests {
         // Test vectors for GOST 28147-89
         // https://www.rfc-editor.org/rfc/rfc5831#section-7
 
-        use crypto_vectors::gost::rfc5830;
+        use crypto_vectors::gost::rfc5831;
 
         let mut magma = Magma::new();
         magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
-        magma.set_key(&rfc5830::CIPHER_KEY1);
-        assert_eq!(magma.decrypt(rfc5830::CIPHERTEXT1), rfc5830::PLAINTEXT);
+        magma.set_key(&rfc5831::CIPHER_KEY1);
+        assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT1), rfc5831::PLAINTEXT);
 
-        magma.set_key(&rfc5830::CIPHER_KEY2);
-        assert_eq!(magma.decrypt(rfc5830::CIPHERTEXT2), rfc5830::PLAINTEXT);
+        magma.set_key(&rfc5831::CIPHER_KEY2);
+        assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT2), rfc5831::PLAINTEXT);
 
-        magma.set_key(&rfc5830::CIPHER_KEY3);
-        assert_eq!(magma.decrypt(rfc5830::CIPHERTEXT3), rfc5830::PLAINTEXT);
+        magma.set_key(&rfc5831::CIPHER_KEY3);
+        assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT3), rfc5831::PLAINTEXT);
 
-        magma.set_key(&rfc5830::CIPHER_KEY4);
-        assert_eq!(magma.decrypt(rfc5830::CIPHERTEXT4), rfc5830::PLAINTEXT);
+        magma.set_key(&rfc5831::CIPHER_KEY4);
+        assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT4), rfc5831::PLAINTEXT);
     }
 
     #[test]
