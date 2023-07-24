@@ -86,24 +86,10 @@ mod tests {
 
     use super::*;
 
-    const CIPHER_KEY_RFC8891: [u32;8] = [
-        0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
-    ];
-
-    const PLAINTEXT1_GOST_R3413_2015: u64 = 0x92def06b3c130a59_u64;
-    const PLAINTEXT2_GOST_R3413_2015: u64 = 0xdb54c704f8189d20_u64;
-    const PLAINTEXT3_GOST_R3413_2015: u64 = 0x4a98fb2e67a8024c_u64;
-    const PLAINTEXT4_GOST_R3413_2015: u64 = 0x8912409b17b57e41_u64;
-
-    // Test vectors GOST R 34.13-2015
-    // Generating MAC
-    // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-    // Page 40, Section A.2.6
-    const MAC_GOST_R3413_2015: u32 = 0x154e7210_u32;
-
     #[test]
     fn cmac_subkeys_gost_r_34_13_2015() {
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        use crypto_vectors::gost::r3413_2015;
+        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
         let (k1, k2) = MAC::generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
         assert_eq!(k2, 0xbe8b366684a42848_u64);
@@ -115,7 +101,8 @@ mod tests {
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
 
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        use crypto_vectors::gost::r3413_2015;
+        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
 
         let (k1, k2) = MAC::generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
@@ -123,27 +110,27 @@ mod tests {
 
         let k_n = k1;
 
-        let i1 = PLAINTEXT1_GOST_R3413_2015;
+        let i1 = r3413_2015::PLAINTEXT1;
         let o1 = magma.encrypt(i1);
         assert_eq!(o1, 0x2b073f0494f372a0_u64);
 
-        let i2 = o1 ^ PLAINTEXT2_GOST_R3413_2015;
+        let i2 = o1 ^ r3413_2015::PLAINTEXT2;
         assert_eq!(i2, 0xf053f8006cebef80_u64);
         let o2 = magma.encrypt(i2);
         assert_eq!(o2, 0xc89ed814fd5e18e9_u64);
         
-        let i3 = o2 ^ PLAINTEXT3_GOST_R3413_2015;
+        let i3 = o2 ^ r3413_2015::PLAINTEXT3;
         assert_eq!(i3, 0x8206233a9af61aa5_u64);
         let o3 = magma.encrypt(i3);
         assert_eq!(o3, 0xf739b18d34289b00_u64);
 
-        let i4 = o3 ^ PLAINTEXT4_GOST_R3413_2015 ^ k_n;
+        let i4 = o3 ^ r3413_2015::PLAINTEXT4 ^ k_n;
         assert_eq!(i4, 0x216e6a2561cff165_u64);
         let o4 = magma.encrypt(i4);
         assert_eq!(o4, 0x154e72102030c5bb_u64);
 
         let (mac, _) = Magma::u64_split(o4);
-        assert_eq!(mac, MAC_GOST_R3413_2015);
+        assert_eq!(mac, r3413_2015::MAC);
     }
 
     #[test]
@@ -152,16 +139,18 @@ mod tests {
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
 
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        use crypto_vectors::gost::r3413_2015;
 
-        let mut src_buf = Vec::<u8>::new();
-        src_buf.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
-        src_buf.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT2.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mac = MAC::mac(&mut magma, &src_buf);
-        assert_eq!(mac, MAC_GOST_R3413_2015);
+        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+
+        let mac = MAC::mac(&mut magma, &source);
+        assert_eq!(mac, r3413_2015::MAC);
     }
 }
 

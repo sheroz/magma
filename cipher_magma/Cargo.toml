@@ -9,3 +9,6 @@ readme = "README.md"
 repository = "https://github.com/sheroz/magma"
 license = "MIT"
 keywords = ["cryptography", "block-cipher", "magma", "gost-r-34-12-2015", "gost-28147-89"]
+
+[dev-dependencies]
+crypto_vectors = { path = "../crypto_vectors" }

@@ -7,7 +7,6 @@ edition = "2021"
 cipher_magma = { path = "../cipher_magma" }
 
 [dev-dependencies]
-
 criterion = "0.5"
 
 [[bench]]

@@ -55,58 +55,46 @@ mod tests {
 
     use super::*;
 
-    const CIPHER_KEY_RFC8891: [u32;8] = [
-        0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
-    ];
-
-    const PLAINTEXT1_GOST_R3413_2015: u64 = 0x92def06b3c130a59_u64;
-    const PLAINTEXT2_GOST_R3413_2015: u64 = 0xdb54c704f8189d20_u64;
-    const PLAINTEXT3_GOST_R3413_2015: u64 = 0x4a98fb2e67a8024c_u64;
-    const PLAINTEXT4_GOST_R3413_2015: u64 = 0x8912409b17b57e41_u64;
-
-    // Test vectors GOST R 34.13-2015
-    // Encrypting in ECB Mode
-    // Page 35, Section: A.2.1
-    const ENCRYPTED1_ECB_GOST_R3413_2015: u64 = 0x2b073f0494f372a0_u64;
-    const ENCRYPTED2_ECB_GOST_R3413_2015: u64 = 0xde70e715d3556e48_u64;
-    const ENCRYPTED3_ECB_GOST_R3413_2015: u64 = 0x11d8d9e9eacfbc1e_u64;
-    const ENCRYPTED4_ECB_GOST_R3413_2015: u64 = 0x7c68260996c67efb_u64;            
-
     #[test]
     fn encrypt_ecb_gost_r_34_13_2015() {
-        let mut source = Vec::<u8>::new();
-        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
 
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        use crypto_vectors::gost::r3413_2015;
+
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT2.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
+
+        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
         let encrypted = ECB::encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
-        expected.extend_from_slice(&ENCRYPTED1_ECB_GOST_R3413_2015.to_be_bytes());
-        expected.extend_from_slice(&ENCRYPTED2_ECB_GOST_R3413_2015.to_be_bytes());
-        expected.extend_from_slice(&ENCRYPTED3_ECB_GOST_R3413_2015.to_be_bytes());
-        expected.extend_from_slice(&ENCRYPTED4_ECB_GOST_R3413_2015.to_be_bytes());
+        expected.extend_from_slice(&r3413_2015::CIPHERTEXT1_ECB.to_be_bytes());
+        expected.extend_from_slice(&r3413_2015::CIPHERTEXT2_ECB.to_be_bytes());
+        expected.extend_from_slice(&r3413_2015::CIPHERTEXT3_ECB.to_be_bytes());
+        expected.extend_from_slice(&r3413_2015::CIPHERTEXT4_ECB.to_be_bytes());
         assert_eq!(encrypted, expected);
     }
     
     #[test]
     fn decrypt_ecb_gost_r_34_13_2015() {
-        let mut source = Vec::<u8>::new();
-        source.extend_from_slice(&PLAINTEXT1_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT2_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT3_GOST_R3413_2015.to_be_bytes());
-        source.extend_from_slice(&PLAINTEXT4_GOST_R3413_2015.to_be_bytes());
+        use crypto_vectors::gost::r3413_2015;
 
-        let mut magma = Magma::with_key(&CIPHER_KEY_RFC8891);
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT2.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
+
+        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
 
         let mut encrypted = Vec::<u8>::new();
-        encrypted.extend_from_slice(&ENCRYPTED1_ECB_GOST_R3413_2015.to_be_bytes());
-        encrypted.extend_from_slice(&ENCRYPTED2_ECB_GOST_R3413_2015.to_be_bytes());
-        encrypted.extend_from_slice(&ENCRYPTED3_ECB_GOST_R3413_2015.to_be_bytes());
-        encrypted.extend_from_slice(&ENCRYPTED4_ECB_GOST_R3413_2015.to_be_bytes());
+        encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT1_ECB.to_be_bytes());
+        encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT2_ECB.to_be_bytes());
+        encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT3_ECB.to_be_bytes());
+        encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT4_ECB.to_be_bytes());
 
         let decrypted = ECB::decrypt(&mut magma, &encrypted);
         assert_eq!(decrypted, source);
