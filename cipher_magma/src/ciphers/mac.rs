@@ -1,3 +1,4 @@
+use crate::utils;
 use crate::Magma;
 
 pub struct MAC;
@@ -49,7 +50,7 @@ impl MAC {
             block_feedback = core.encrypt(block_in);
         }
 
-        let (mac, _) = Magma::u64_split(block_feedback);
+        let (mac, _) = utils::u64_split(block_feedback);
 
         mac
     }
@@ -129,7 +130,7 @@ mod tests {
         let o4 = magma.encrypt(i4);
         assert_eq!(o4, 0x154e72102030c5bb_u64);
 
-        let (mac, _) = Magma::u64_split(o4);
+        let (mac, _) = utils::u64_split(o4);
         assert_eq!(mac, r3413_2015::MAC);
     }
 

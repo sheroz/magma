@@ -27,6 +27,7 @@
     GOST 28147-89 IMIT
 */
 
+pub mod utils;
 pub mod core;
 pub mod cipher_mode;
 pub mod ciphers;
@@ -271,24 +272,15 @@ impl Magma {
         (a_0, self.transformation_g(k, a_0) ^ a_1)
     }
 
-    #[inline]
-    fn u64_split(a: u64) -> (u32, u32) {
-        ((a >> 32) as u32, a  as u32)
-    } 
-
-    #[inline]
-    fn u64_join(a_1: u32, a_0: u32) -> u64 {
-        ((a_0 as u64) << 32) | (a_1 as u64)
-    } 
-
     /// Returns [encrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.1) as `u64` value
     /// 
     /// # Arguments
     ///
     /// * `block_in` - a plaintext value as `u64`
+    #[inline]
     pub fn encrypt(&self, block_in: u64) -> u64 {
         // split the input block into u32 parts
-        let (mut a_1, mut a_0) = Magma::u64_split(block_in);
+        let (mut a_1, mut a_0) = utils::u64_split(block_in);
 
         // crypto transformations
         let mut round = 0;
@@ -298,7 +290,7 @@ impl Magma {
         }
 
         // join u32 parts into u64 block
-        Magma::u64_join(a_1, a_0)
+        utils::u32_join(a_0, a_1)
     }
     
     /// Returns [decrypted block](https://datatracker.ietf.org/doc/html/rfc8891.html#section-5.2) as `u64` value
@@ -306,9 +298,10 @@ impl Magma {
     /// # Arguments
     ///
     /// * `block_in` - a ciphertext value as `u64`
+    #[inline]
     pub fn decrypt(&self, block_in: u64) -> u64 {
         // split the input block into u32 parts
-        let (mut b_1, mut b_0) = Magma::u64_split(block_in);
+        let (mut b_1, mut b_0) = utils::u64_split(block_in);
 
         // crypto transformations
         let mut round = 32;
@@ -318,7 +311,7 @@ impl Magma {
         }
 
         // join u32 parts into u64 block
-        Magma::u64_join(b_1, b_0)
+        utils::u32_join(b_0, b_1)
     }
 
     /// Returns resulting vector as `Vec<u8>`
@@ -410,18 +403,6 @@ mod tests {
     }
 
     #[test]
-    fn split_into_u32_rfc8891() {
-        use crypto_vectors::gost::rfc8891;
-        assert_eq!(Magma::u64_split(rfc8891::PLAINTEXT),(0xfedcba98_u32, 0x76543210_u32));
-    }
-
-    #[test]
-    fn join_as_u64_rfc8891() {
-        use crypto_vectors::gost::rfc8891;
-        assert_eq!(Magma::u64_join(0xc2d8ca3d_u32, 0x4ee901e5_u32), rfc8891::CIPHERTEXT);
-    }
-
-    #[test]
     fn transformation_t_rfc8891() {
         // Test vectors RFC8891:
         // https://datatracker.ietf.org/doc/html/rfc8891.html#section-a.1
@@ -472,7 +453,7 @@ mod tests {
 
         let magma = Magma::with_key(&rfc8891::CIPHER_KEY);
 
-        let (mut a_1, mut a_0) = Magma::u64_split(rfc8891::PLAINTEXT);
+        let (mut a_1, mut a_0) = utils::u64_split(rfc8891::PLAINTEXT);
 
         for round in 0..32 {
             (a_1, a_0) = magma.transformation_big_g(magma.round_keys[round], a_1, a_0); 
