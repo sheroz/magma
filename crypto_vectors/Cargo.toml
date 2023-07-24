@@ -1,0 +1,11 @@
+[package]
+name = "crypto_vectors"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sheroz Khaydarov"]
+description = "Cryptography test vectors"
+documentation = "https://docs.rs/crypto_vectors"
+readme = "README.md"
+repository = "https://github.com/sheroz/magma"
+license = "MIT"
+keywords = ["cryptography", "cipher", "test", "vector", "test-vectors"]

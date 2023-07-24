@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "cipher_magma",
+    "crypto_vectors",
     "magma_samples"
 ]
