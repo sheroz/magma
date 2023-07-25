@@ -1,60 +1,52 @@
 use crate::Magma;
-use crate::core::CipherBuffer;
 
-pub struct CTR;
-
-impl CipherBuffer for CTR {
-    /// Returns encrypted result as `Vec<u8>`
-    /// 
-    /// Implements buffer encrypting in Counter Encryption (CTR) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 15, Section 5.2.1
-    fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
-        CTR::cipher_ctr(core, buf)
-    }
-
-    /// Returns decrypted result as `Vec<u8>`
-    /// 
-    /// Implements buffer decrypting in Counter Encryption (CTR) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 15, Section 5.2.2
-    fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
-        CTR::cipher_ctr(core, buf)
-    }
+/// Returns encrypted result as `Vec<u8>`
+/// 
+/// Implements buffer encrypting in Counter Encryption (CTR) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 15, Section 5.2.1
+pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    cipher_ctr(core, buf)
 }
 
-impl CTR {
-    
-    /// Returns encrypted/decrypted result as `Vec<u8>`
-    /// 
-    /// Implements Counter Encryption (CTR) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 14, Section 5.2
-    fn cipher_ctr(core: &Magma, buf: &[u8]) -> Vec<u8> {
+/// Returns decrypted result as `Vec<u8>`
+/// 
+/// Implements buffer decrypting in Counter Encryption (CTR) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 15, Section 5.2.2
+pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    cipher_ctr(core, buf)
+}
 
-        let iv_ctr = core.prepare_vector_ctr();
-        let mut result = Vec::<u8>::with_capacity(buf.len());
+/// Returns encrypted/decrypted result as `Vec<u8>`
+/// 
+/// Implements Counter Encryption (CTR) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 14, Section 5.2
+fn cipher_ctr(core: &Magma, buf: &[u8]) -> Vec<u8> {
 
-        for (chunk_index, chunk) in buf.chunks(8).enumerate() {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
+    let iv_ctr = core.prepare_vector_ctr();
+    let mut result = Vec::<u8>::with_capacity(buf.len());
 
-            let ctr = iv_ctr.wrapping_add(chunk_index as u64);
-            let gamma = core.encrypt(ctr);
-            let output =  gamma ^ block;
+    for (chunk_index, chunk) in buf.chunks(8).enumerate() {
+        let mut array_u8 = [0u8;8];
+        chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+        let block = u64::from_be_bytes(array_u8);
 
-            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
-        }
+        let ctr = iv_ctr.wrapping_add(chunk_index as u64);
+        let gamma = core.encrypt(ctr);
+        let output =  gamma ^ block;
 
-        result
+        result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
+
+    result
 }
 
 #[cfg(test)] 
@@ -123,7 +115,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
         let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
-        let encrypted = CTR::encrypt(&mut magma, &source);
+        let encrypted = encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -152,7 +144,7 @@ mod tests {
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT3_CTR.to_be_bytes());
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT4_CTR.to_be_bytes());
 
-        let decrypted = CTR::decrypt(&mut magma, &encrypted);
+        let decrypted = decrypt(&mut magma, &encrypted);
         assert_eq!(decrypted, source);
     }    
 }

@@ -122,8 +122,8 @@ Output:
     println!("Message:\n{:x?}\n", message);
 
     let mut magma = Magma::with_key(&security_key);
-    let mac = MAC::mac(&mut magma, &message);
-    println!("Generated MAC:\n{:x}\n", mac);
+    let mac = mac::calculate(&mut magma, &message);
+    println!("Calculated MAC:\n{:x}\n", mac);
 
 Output:
 
@@ -133,5 +133,5 @@ Output:
     Message:
     [92, de, f0, 6b, 3c, 13, a, 59, db, 54, c7, 4, f8, 18, 9d, 20, 4a, 98, fb, 2e, 67, a8, 2, 4c, 89, 12, 40, 9b, 17, b5, 7e, 41]
 
-    Generated MAC:
+    Calculated MAC:
     154e7210

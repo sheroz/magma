@@ -1,66 +1,58 @@
 use std::collections::VecDeque;
 
 use crate::Magma;
-use crate::core::CipherBuffer;
 
-pub struct OFB;
-
-impl CipherBuffer for OFB {
-    /// Returns encrypted result as `Vec<u8>`
-    /// 
-    /// Implements buffer encrypting in Output Feedback (OFB) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 16, Section 5.3
-    fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
-        OFB::cipher_ofb(core, buf)
-    }
-
-    /// Returns decrypted result as `Vec<u8>`
-    /// 
-    /// Implements buffer decrypting in Output Feedback (OFB) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 16, Section 5.3
-    fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
-        OFB::cipher_ofb(core, buf)
-    }
+/// Returns encrypted result as `Vec<u8>`
+/// 
+/// Implements buffer encrypting in Output Feedback (OFB) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 16, Section 5.3
+pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    cipher_ofb(core, buf)
 }
 
-impl OFB {
-    /// Returns encrypted/decrypted result as `Vec<u8>`
-    /// 
-    /// Implements Output Feedback (OFB) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 16, Section 5.3
-    fn cipher_ofb(core: &Magma, buf: &[u8]) -> Vec<u8> {
+/// Returns decrypted result as `Vec<u8>`
+/// 
+/// Implements buffer decrypting in Output Feedback (OFB) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 16, Section 5.3
+pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    cipher_ofb(core, buf)
+}
 
-        core.ensure_iv_not_empty();
-        let mut register_r = VecDeque::from(core.iv.clone());
+/// Returns encrypted/decrypted result as `Vec<u8>`
+/// 
+/// Implements Output Feedback (OFB) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 16, Section 5.3
+fn cipher_ofb(core: &Magma, buf: &[u8]) -> Vec<u8> {
 
-        let mut result = Vec::<u8>::with_capacity(buf.len());
+    core.ensure_iv_not_empty();
+    let mut register_r = VecDeque::from(core.iv.clone());
 
-        for chunk in buf.chunks(8) {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
+    let mut result = Vec::<u8>::with_capacity(buf.len());
 
-            let register_n= register_r.pop_front().unwrap();
-            let ofb = core.encrypt(register_n);
-            let output = ofb ^ block;
+    for chunk in buf.chunks(8) {
+        let mut array_u8 = [0u8;8];
+        chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+        let block = u64::from_be_bytes(array_u8);
 
-            register_r.push_back(ofb);
+        let register_n= register_r.pop_front().unwrap();
+        let ofb = core.encrypt(register_n);
+        let output = ofb ^ block;
 
-            result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
-        }
+        register_r.push_back(ofb);
 
-        result
+        result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
 
+    result
 }
 
 #[cfg(test)] 
@@ -151,7 +143,7 @@ mod tests {
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
         magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
 
-        let encrypted = OFB::encrypt(&mut magma, &source);
+        let encrypted = encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -188,7 +180,7 @@ mod tests {
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT3_OFB.to_be_bytes());
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT4_OFB.to_be_bytes());
 
-        let decrypted = OFB::decrypt(&mut magma, &encrypted);
+        let decrypted = decrypt(&mut magma, &encrypted);
         assert_eq!(decrypted, source);
     }
 }

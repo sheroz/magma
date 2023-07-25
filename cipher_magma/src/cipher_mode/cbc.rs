@@ -1,70 +1,65 @@
 use std::collections::VecDeque;
 
 use crate::Magma;
-use crate::core::CipherBuffer;
 
-pub struct CBC;
+/// Returns encrypted result as `Vec<u8>`
+/// 
+/// Implements buffer encrypting in Cipher Block Chaining (CBC) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 20, Section 5.4.1
+pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
-impl CipherBuffer for CBC {
-    /// Returns encrypted result as `Vec<u8>`
-    /// 
-    /// Implements buffer encrypting in Cipher Block Chaining (CBC) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 20, Section 5.4.1
-    fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.ensure_iv_not_empty();
+    let mut register_r = VecDeque::from(core.iv.clone());
 
-        core.ensure_iv_not_empty();
-        let mut register_r = VecDeque::from(core.iv.clone());
+    let mut result = Vec::<u8>::with_capacity(buf.len());
 
-        let mut result = Vec::<u8>::with_capacity(buf.len());
+    for chunk in buf.chunks(8) {
+        let mut array_u8 = [0u8;8];
+        chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+        let block = u64::from_be_bytes(array_u8);
 
-        for chunk in buf.chunks(8) {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
+        let register_n= register_r.pop_front().unwrap();
+        let output = core.encrypt(block ^ register_n);
 
-            let register_n= register_r.pop_front().unwrap();
-            let output = core.encrypt(block ^ register_n);
+        register_r.push_back(output);
 
-            register_r.push_back(output);
-
-            result.extend_from_slice(&output.to_be_bytes());
-        }
-
-        result
+        result.extend_from_slice(&output.to_be_bytes());
     }
 
-    /// Returns decrypted result as `Vec<u8>`
-    /// 
-    /// Implements buffer decrypting in Cipher Block Chaining (CBC) Mode
-    /// 
-    /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-    /// 
-    /// Page 21, Section 5.4.2
-    fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    result
+}
 
-        core.ensure_iv_not_empty();
-        let mut register_r = VecDeque::from(core.iv.clone());
+/// Returns decrypted result as `Vec<u8>`
+/// 
+/// Implements buffer decrypting in Cipher Block Chaining (CBC) Mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 21, Section 5.4.2
+pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
-        let mut result = Vec::<u8>::with_capacity(buf.len());
+    core.ensure_iv_not_empty();
+    let mut register_r = VecDeque::from(core.iv.clone());
 
-        for chunk in buf.chunks(8) {
-            let mut array_u8 = [0u8;8];
-            chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            let block = u64::from_be_bytes(array_u8);
+    let mut result = Vec::<u8>::with_capacity(buf.len());
 
-            let register_n= register_r.pop_front().unwrap();
-            let output = core.decrypt(block) ^ register_n;
-            
-            register_r.push_back(block);
+    for chunk in buf.chunks(8) {
+        let mut array_u8 = [0u8;8];
+        chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
+        let block = u64::from_be_bytes(array_u8);
 
-            result.extend_from_slice(&output.to_be_bytes());
-        }
+        let register_n= register_r.pop_front().unwrap();
+        let output = core.decrypt(block) ^ register_n;
+        
+        register_r.push_back(block);
 
-        result
+        result.extend_from_slice(&output.to_be_bytes());
     }
+
+    result
 }
 
 #[cfg(test)] 
@@ -145,7 +140,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
         let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
-        let encrypted = CBC::encrypt(&mut magma, &source);
+        let encrypted = encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -178,7 +173,7 @@ mod tests {
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT3_CBC.to_be_bytes());
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT4_CBC.to_be_bytes());
 
-        let decrypted = CBC::decrypt(&mut magma, &encrypted);
+        let decrypted = decrypt(&mut magma, &encrypted);
         assert_eq!(decrypted, source);
     }
 }

@@ -5,7 +5,7 @@
 //! 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
 //! 3. Block Cipher Modes: [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 //! 
-//! Supported Cipher Modes:
+//! [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 //! * **ECB** - Electronic Codebook Mode
 //! * **CTR** - Counter Encryption Mode
 //! * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html), [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
@@ -28,20 +28,9 @@
 */
 
 pub mod utils;
-pub mod core;
 pub mod cipher_mode;
-pub mod ciphers;
 
-use crate::core::CipherBuffer;
-
-use cipher_mode::CipherMode;
-use ciphers::ecb::ECB;
-use ciphers::ctr::CTR;
-use ciphers::ctr_acpkm::CTR_ACPKM;
-use ciphers::ofb::OFB;
-use ciphers::cbc::CBC;
-use ciphers::cfb::CFB;
-use ciphers::mac::MAC;
+use cipher_mode::{ecb, ctr, ctr_acpkm, ofb, cbc, cfb, mac};
 
 /// Block Cipher "Magma"
 pub struct Magma {
@@ -61,6 +50,58 @@ pub enum CipherOperation {
 
     /// Message Authentication Code (MAC) Generation
     MessageAuthentication
+}
+
+/// **Cipher Mode**
+/// 
+/// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// * **ECB** - Electronic Codebook Mode
+/// * **CTR** - Counter Encryption Mode
+/// * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html), [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
+/// * **OFB** - Output Feedback Mode
+/// * **CBC** - Cipher Block Chaining Mode
+/// * **CFB** - Cipher Feedback Mode
+/// * **MAC** - Message Authentication Code Generation Mode
+pub enum CipherMode {
+    /// Electronic Codebook (ECB) Mode
+    ECB, 
+
+    /// Counter Encryption (CTR) Mode
+    CTR, 
+
+    /// Counter Encryption (CTR-ACPKM) Mode
+    #[allow(non_camel_case_types)]
+    CTR_ACPKM,
+
+    /// Output Feedback (OFB) Mode
+    OFB,
+
+    /// Cipher Block Chaining (CBC) Mode
+    CBC,
+
+    /// Cipher Feedback Mode (CFB)
+    CFB,
+
+    /// Message Authentication Code (MAC) Generation Mode
+    MAC 
+}
+
+impl CipherMode {
+    /// Returns a boolean value indicating whether the cipher mode requires padding
+    /// 
+    /// Some cipher modes require the size of the input plaintext to be multiple of the block size,
+    /// so input plaintext may have to be padded before encryption to bring it to the required length.
+    pub fn has_padding(&self) -> bool
+    {
+        match *self {
+            CipherMode::CTR => false,
+            CipherMode::CTR_ACPKM => false,
+            CipherMode::OFB => false,
+            CipherMode::CFB => false,
+            _ => true
+        }
+    }
 }
 
 impl Magma {
@@ -325,30 +366,30 @@ impl Magma {
         match cipher_operation {
             CipherOperation::Encrypt => {
                 match cipher_mode {
-                    CipherMode::ECB => ECB::encrypt(self, buf),
-                    CipherMode::CTR => CTR::encrypt(self, buf),
-                    CipherMode::CTR_ACPKM => CTR_ACPKM::encrypt(self, buf),
-                    CipherMode::OFB => OFB::encrypt(self, buf),
-                    CipherMode::CBC => CBC::encrypt(self, buf),
-                    CipherMode::CFB => CFB::encrypt(self, buf),
+                    CipherMode::ECB => ecb::encrypt(self, buf),
+                    CipherMode::CTR => ctr::encrypt(self, buf),
+                    CipherMode::CTR_ACPKM => ctr_acpkm::encrypt(self, buf),
+                    CipherMode::OFB => ofb::encrypt(self, buf),
+                    CipherMode::CBC => cbc::encrypt(self, buf),
+                    CipherMode::CFB => cfb::encrypt(self, buf),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in encrypting operation!")
                 }
             },
             CipherOperation::Decrypt => {
                 match cipher_mode {
-                    CipherMode::ECB => ECB::decrypt(self, buf),
-                    CipherMode::CTR => CTR::decrypt(self, buf),
-                    CipherMode::CTR_ACPKM => CTR_ACPKM::decrypt(self, buf),
-                    CipherMode::OFB => OFB::decrypt(self, buf),
-                    CipherMode::CBC => CBC::decrypt(self, buf),
-                    CipherMode::CFB => CFB::decrypt(self, buf),
+                    CipherMode::ECB => ecb::decrypt(self, buf),
+                    CipherMode::CTR => ctr::decrypt(self, buf),
+                    CipherMode::CTR_ACPKM => ctr_acpkm::decrypt(self, buf),
+                    CipherMode::OFB => ofb::decrypt(self, buf),
+                    CipherMode::CBC => cbc::decrypt(self, buf),
+                    CipherMode::CFB => cfb::decrypt(self, buf),
                     CipherMode::MAC => panic!("CipherMode::MAC can not be used in decrypting operation!")
                 }
             },
             CipherOperation::MessageAuthentication => {
                 match cipher_mode {
                     CipherMode::MAC => {
-                        MAC::mac(self, buf).to_be_bytes().to_vec()
+                        mac::calculate(self, buf).to_be_bytes().to_vec()
                      },
                     _ => panic!("Only CipherMode::MAC can be used in MessageAuthentication!")
                 }
@@ -361,6 +402,17 @@ impl Magma {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn has_padding() {
+        assert_eq!(CipherMode::ECB.has_padding(), true);
+        assert_eq!(CipherMode::CTR.has_padding(), false);
+        assert_eq!(CipherMode::CTR_ACPKM.has_padding(), false);
+        assert_eq!(CipherMode::OFB.has_padding(), false);
+        assert_eq!(CipherMode::CBC.has_padding(), true);
+        assert_eq!(CipherMode::CFB.has_padding(), false);
+        assert_eq!(CipherMode::MAC.has_padding(), true);
+    }
 
     #[test]
     fn default_initialization() {
