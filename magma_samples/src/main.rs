@@ -1,4 +1,4 @@
-use cipher_magma::{Magma, CipherOperation, CipherMode};
+use cipher_magma::{Magma, CipherOperation, CipherMode, cipher_mode::mac};
 
 fn main() {
     println!("\n***\n\nSample of block encryption:");
@@ -61,7 +61,7 @@ fn sample_encrypt_text() {
 
     let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
 
-    if Magma::require_padding(&cipher_mode)
+    if cipher_mode.has_padding()
     {
         // remove padding bytes
         decrypted.truncate(source_bytes.len());
@@ -89,8 +89,8 @@ fn sample_generate_mac() {
     println!("Message:\n{:x?}\n", message);
 
     let mut magma = Magma::with_key(&security_key);
-    let mac = magma.cipher_mac(&message);
-    println!("Generated MAC:\n{:x}\n", mac);
+    let mac = mac::calculate(&mut magma, &message);
+    println!("Calculated MAC:\n{:x}\n", mac);
 }
 
 #[cfg(test)]
