@@ -17,9 +17,13 @@
 
 ## Implemented and tested according to specifications
 
-1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
-2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
-3. Block Cipher Modes: [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)  
+* [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015: Block Cipher "Magma"
+* [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
+* Block Cipher Modes:
+  * [**GOST R 34.13-2015**](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+  * [**CTR-ACPKM** Ciphering Mode, Р 1323565.1.017—2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
+
+Tests are implemented using: [crypto_vectors](https://crates.io/crates/crypto_vectors)
 
 ## Tested on platforms
 
