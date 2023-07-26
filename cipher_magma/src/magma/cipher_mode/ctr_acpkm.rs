@@ -1,6 +1,5 @@
-use crate::Magma;
-use crate::CipherOperation;
-use crate::CipherMode;
+use crate::magma::{Magma, CipherOperation};
+use crate::magma::cipher_mode::CipherMode;
 
 /// Returns encrypted result as `Vec<u8>`
 /// 

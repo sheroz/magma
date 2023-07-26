@@ -1,5 +1,4 @@
-use crate::utils;
-use crate::Magma;
+use crate::magma::{Magma, utils};
 
 /// Returns the Message Authentication Code (MAC) value
 /// 

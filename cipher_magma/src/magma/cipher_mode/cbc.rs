@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::Magma;
+use crate::magma::Magma;
 
 /// Returns encrypted result as `Vec<u8>`
 /// 

@@ -1,4 +1,4 @@
-use cipher_magma::{Magma, CipherOperation, CipherMode, cipher_mode::mac};
+use cipher_magma::{Magma, CipherOperation, CipherMode, mac};
 
 fn main() {
     println!("\n***\n\nSample of block encryption:");
