@@ -36,6 +36,7 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
 
 ### Sample of block encryption
 
+```rust
     use cipher_magma::Magma;
 
     let mut magma = Magma::new();
@@ -58,9 +59,11 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
     println!("Decrypted block:\n{:x}", decrypted);
 
     assert_eq!(decrypted, source);
+```
 
 Output:
 
+```text
     Cipher key:
     [ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
 
@@ -72,9 +75,11 @@ Output:
 
     Decrypted block:
     fedcba9876543210
+```
 
 ### Sample of text encryption
 
+```rust
     use cipher_magma::{CipherMode, CipherOperation, Magma};
 
     let cipher_mode = CipherMode::CFB;
@@ -114,9 +119,11 @@ Output:
     println!("Decrypted text:\n{}\n", decrypted_text);
 
     assert_eq!(decrypted_text, source_text);
+```
 
 Output:
 
+```text
     Cipher key:
     [ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
 
@@ -128,9 +135,11 @@ Output:
 
     Decrypted text:
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
+```
 
 ### Sample of Message Authentication Code (MAC) calculation
 
+```rust
     use cipher_magma::{mac, Magma};
 
     let cipher_key: [u32; 8] = [
@@ -149,9 +158,11 @@ Output:
     let mut magma = Magma::with_key(&cipher_key);
     let mac = mac::calculate(&mut magma, &message);
     println!("Calculated MAC:\n{:x}\n", mac);
+```
 
 Output:
 
+```text
     Cipher key:
     [ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
 
@@ -160,3 +171,4 @@ Output:
 
     Calculated MAC:
     154e7210
+```
