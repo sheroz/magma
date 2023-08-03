@@ -1,53 +1,99 @@
-use crate::magma::{Magma, utils};
+use crate::{magma::{Magma, utils}, CipherOperation, CipherMode};
 
 /// Returns the Message Authentication Code (MAC) value
 /// 
 /// # Arguments
-/// * msg_buf - a slice of `&[u8]` data
+/// * core - a mutable reference to `Magma`
+/// * msg_buf - a slice of `&[u8]` data to feed
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 26, Section 5.6
 pub fn calculate(core: &mut Magma, msg_buf: &[u8]) -> u32 {
+    core.reset_feedback();
+    core.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
 
-    let (k1, k2) = generate_cmac_subkeys(core);
-    let k_n = if (msg_buf.len() % 8) == 0 { k1 } else { k2 };
+    update(core, msg_buf);
+    finalize(core)
+}
 
-    let mut block_feedback = 0u64;
+/// Updates the context of Message Authentication Code (MAC)
+/// 
+/// # Arguments
+/// * core - a mutable reference to `Magma`
+/// * msg_buf - a slice of `&[u8]` data to feed
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 26, Section 5.6
+pub fn update(core: &mut Magma, msg_buf: &[u8]) {
 
-    let mut chunks = msg_buf.chunks(8).peekable();
+    core.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
+
+    let mut block_feedback = match core.context.feedback.block {
+        Some(block) => block,
+        None => 0
+    };
+
+    let mut chunks = msg_buf.chunks(8);
+    let mut first = true;
     while let Some(chunk) = chunks.next()  {
 
         let mut array_u8 = [0u8;8];
         chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
 
-        let last_round = chunks.peek().is_none();
-        if last_round {
-            let chunk_len = chunk.len();
-            if chunk_len < 8 {
-                // Uncomplete chunk, needs padding
-                // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-                // Page 11, Section 4.1.3
-                // Padding the remaining bytes:
-                // 1. Mark the starting byte with 0x80
-                // 2. Other bytes already padded with 0x00
-                array_u8[chunk_len] = 0x80_u8;
-            }
+        let chunk_len = chunk.len();
+        if chunk_len < 8 {
+            // Uncomplete chunk, needs padding
+            // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+            // Page 11, Section 4.1.3
+            // Padding the remaining bytes:
+            // 1. Mark the starting byte with 0x80
+            // 2. Other bytes already padded with 0x00
+            array_u8[chunk_len] = 0x80_u8;
+            core.context.feedback.padded = true;
         }
 
         let mut block_in = u64::from_be_bytes(array_u8);
 
+        if !first {
+            block_feedback = core.encrypt(block_feedback);
+        } 
+
         block_in ^= block_feedback;
+        block_feedback = block_in;
 
-        if last_round {
-            block_in ^= k_n;
-        }
-
-        block_feedback = core.encrypt(block_in);
+        first = false;
     }
 
-    let (mac, _) = utils::u64_split(block_feedback);
+    // update the feedback state
+    core.context.feedback.block = Some(block_feedback);
 
+}
+
+/// Finalizes the current context and returns the Message Authentication Code (MAC) value
+/// 
+/// # Arguments
+/// * core - a mutable reference to `Magma`
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 26, Section 5.6
+pub fn finalize(core: &mut Magma) -> u32 {
+    core.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
+
+    let (k1, k2) = generate_cmac_subkeys(core);
+    let k_n = if core.context.feedback.padded { k2 } else { k1 };
+
+    let finalizer = match core.context.feedback.block {
+        Some(finalizer) => finalizer ^ k_n,
+        None => 0
+    };
+
+    let block = core.encrypt(finalizer);
+    let (mac, _) = utils::u64_split(block);
+
+    core.reset_context();
     mac
 }
 
@@ -145,7 +191,8 @@ mod tests {
 
         let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
 
-        let mac = calculate(&mut magma, &source);
+        update(&mut magma, &source);
+        let mac = finalize(&mut magma);
         assert_eq!(mac, r3413_2015::MAC);
     }
 }

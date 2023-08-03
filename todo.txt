@@ -1,0 +1,11 @@
+magma: cfb::encrypt_stream() -> (encrypted, state)
+magma.reset_state() 
+
+key, ciper mode, ciper operation change resets state
+
+key = [0xAB;256];
+
+mac_update()
+mac_finalize()
+
+remove MAC from cipher modes

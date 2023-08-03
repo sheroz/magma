@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::magma::Magma;
+use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -10,6 +10,7 @@ use crate::magma::Magma;
 /// 
 /// Page 16, Section 5.3
 pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Encrypt, &CipherMode::OFB);
     cipher_ofb(core, buf)
 }
 
@@ -21,6 +22,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// 
 /// Page 16, Section 5.3
 pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Decrypt, &CipherMode::OFB);
     cipher_ofb(core, buf)
 }
 
@@ -31,10 +33,14 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 16, Section 5.3
-fn cipher_ofb(core: &Magma, buf: &[u8]) -> Vec<u8> {
+fn cipher_ofb(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
     core.ensure_iv_not_empty();
-    let mut register_r = VecDeque::from(core.iv.clone());
+
+    let mut register_r = match &core.context.feedback.vector {
+        Some(vector) => vector.clone(),
+        None => VecDeque::from(core.iv.clone())
+    };
 
     let mut result = Vec::<u8>::with_capacity(buf.len());
 
@@ -51,6 +57,9 @@ fn cipher_ofb(core: &Magma, buf: &[u8]) -> Vec<u8> {
 
         result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
+
+    // update the feedback state
+    core.context.feedback.vector = Some(register_r);
 
     result
 }

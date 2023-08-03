@@ -1,4 +1,4 @@
-use crate::magma::Magma;
+use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -8,6 +8,8 @@ use crate::magma::Magma;
 /// 
 /// Page 13, Section 5.1.1
 pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Encrypt, &CipherMode::ECB);
+
     let m_invoke = Magma::encrypt;
     cipher_ecb(core, buf, m_invoke)
 }
@@ -20,6 +22,8 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// 
 /// Page 13, Section 5.1.2
 pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Decrypt, &CipherMode::ECB);
+
     let m_invoke = Magma::decrypt;
     cipher_ecb(core, buf, m_invoke)
 }
