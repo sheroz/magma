@@ -7,6 +7,9 @@ fn main() {
 
     println!("\n***\n\nSample of Message Authentication Code (MAC) calculation\n");
     sample_calculate_mac();
+
+    println!("\n***\n\nSample of Message Authentication Code (MAC) calculation in data chunks\n");
+    sample_calculate_mac_data_chunks();
 }
 
 /// Sample of block encryption
@@ -98,6 +101,40 @@ fn sample_calculate_mac() {
     let mut magma = Magma::with_key(&cipher_key);
     let mac = mac::calculate(&mut magma, &message);
     println!("Calculated MAC:\n{:x}\n", mac);
+    assert_eq!(mac, 0x154e7210);
+}
+
+/// Sample of Message Authentication Code (MAC)
+/// Updating context with data chunks and finalizing result
+fn sample_calculate_mac_data_chunks() {
+    use cipher_magma::{mac, Magma};
+
+    let cipher_key: [u8; 32] = [
+        0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+        0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
+        0xfe, 0xff,
+    ];
+    println!("Cipher key:\n{:x?}\n", cipher_key);
+
+    let mut magma = Magma::with_key_u8(&cipher_key);
+
+    let message = [
+        0x92, 0xde, 0xf0, 0x6b, 0x3c, 0x13, 0x0a, 0x59, 0xdb, 0x54, 0xc7, 0x04, 0xf8, 0x18, 0x9d,
+        0x20, 0x4a, 0x98, 0xfb, 0x2e, 0x67, 0xa8, 0x02, 0x4c, 0x89, 0x12, 0x40, 0x9b, 0x17, 0xb5,
+        0x7e, 0x41,
+    ];
+    println!("Message:\n{:02x?}\n", message);
+
+    // update the context
+    for chunk in message.chunks(8) {
+        mac::update(&mut magma, &chunk);
+    }
+
+    // finalize and get result
+    let mac = mac::finalize(&mut magma);
+    println!("Calculated MAC:\n{:x}\n", mac);
+
+    assert_eq!(mac, 0x154e7210);
 }
 
 #[cfg(test)]
@@ -122,5 +159,10 @@ mod tests {
     #[test]
     fn sample_calculate_mac_test() {
         sample_calculate_mac();
+    }
+
+    #[test]
+    fn sample_calculate_mac_update_test() {
+        sample_calculate_mac_data_chunks();
     }
 }

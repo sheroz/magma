@@ -64,7 +64,7 @@ fn cipher_ctr_acpkm(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
         if section_bits_processed >= Magma::CTR_ACPKM_SECTION_SIZE_N {
             let state = core.context.clone();
             let section_key = core.cipher(&Magma::CTR_ACPKM_D, &CipherOperation::Encrypt, &CipherMode::ECB);
-            core.set_key_from_bytes(&section_key);
+            core.set_key_u8(&section_key);
             core.context = state;
             section_bits_processed = 0;
         }
@@ -94,7 +94,7 @@ mod tests {
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
         let mut magma = Magma::new();
-        magma.set_key_from_bytes(&ctr_acpkm::CIPHER_KEY);
+        magma.set_key_u8(&ctr_acpkm::CIPHER_KEY);
 
         let encrypted = encrypt(&mut magma, &ctr_acpkm::PLAINTEXT);
         assert!(!encrypted.is_empty());
@@ -112,7 +112,7 @@ mod tests {
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
         let mut magma = Magma::new();
-        magma.set_key_from_bytes(&ctr_acpkm::CIPHER_KEY);
+        magma.set_key_u8(&ctr_acpkm::CIPHER_KEY);
         let decrypted = decrypt(&mut magma, &ctr_acpkm::CIPHERTEXT);
         assert_eq!(decrypted, ctr_acpkm::PLAINTEXT);
     }
