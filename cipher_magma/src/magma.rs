@@ -178,11 +178,11 @@ impl Magma {
     ///     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ///     ];
     ///
-    /// let magma = Magma::with_key(&cipher_key);
+    /// let magma = Magma::with_key_u32(&cipher_key);
     /// ```
-    pub fn with_key(cipher_key: &[u32; 8]) -> Magma {
+    pub fn with_key_u32(cipher_key: &[u32; 8]) -> Magma {
         let mut engine = Magma::new();
-        engine.set_key(cipher_key);
+        engine.set_key_u32(cipher_key);
         engine
     }
 
@@ -253,7 +253,7 @@ impl Magma {
     /// # Arguments
     ///
     /// * `cipher_key` - A reference to `[u32;8]` array
-    pub fn set_key(&mut self, cipher_key: &[u32; 8]) {
+    pub fn set_key_u32(&mut self, cipher_key: &[u32; 8]) {
         self.cipher_key.clone_from(cipher_key);
         self.prepare_round_keys();
         self.reset_feedback();
@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn with_key_rfc8891() {
         use crypto_vectors::gost::rfc8891;
-        let magma = Magma::with_key(&rfc8891::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
         assert_eq!(magma.cipher_key, rfc8891::CIPHER_KEY);
     }
 
@@ -467,7 +467,7 @@ mod tests {
     fn set_key_rfc8891() {
         use crypto_vectors::gost::rfc8891;
         let mut magma = Magma::new();
-        magma.set_key(&rfc8891::CIPHER_KEY);
+        magma.set_key_u32(&rfc8891::CIPHER_KEY);
         assert_eq!(magma.cipher_key, rfc8891::CIPHER_KEY);
     }
 
@@ -523,7 +523,7 @@ mod tests {
         // https://datatracker.ietf.org/doc/html/rfc8891.html#section-a.3
 
         use crypto_vectors::gost::rfc8891;
-        let magma = Magma::with_key(&rfc8891::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
         assert_eq!(magma.round_keys, rfc8891::ROUND_KEYS);
     }
 
@@ -535,7 +535,7 @@ mod tests {
         use crypto_vectors::gost::rfc8891;
         let big_g = rfc8891::TRANSFORMATION_BIG_G;
 
-        let magma = Magma::with_key(&rfc8891::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
 
         let (mut a_1, mut a_0) = utils::u64_split(rfc8891::PLAINTEXT);
 
@@ -551,7 +551,7 @@ mod tests {
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-test-encryption
 
         use crypto_vectors::gost::rfc8891;
-        let magma = Magma::with_key(&rfc8891::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
         assert_eq!(magma.encrypt(rfc8891::PLAINTEXT), rfc8891::CIPHERTEXT);
     }
 
@@ -561,7 +561,7 @@ mod tests {
         // https://datatracker.ietf.org/doc/html/rfc8891.html#name-test-decryption
 
         use crypto_vectors::gost::rfc8891;
-        let magma = Magma::with_key(&rfc8891::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
         assert_eq!(magma.decrypt(rfc8891::CIPHERTEXT), rfc8891::PLAINTEXT);
     }
 
@@ -575,16 +575,16 @@ mod tests {
         let mut magma = Magma::new();
         magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
-        magma.set_key(&rfc5831::CIPHER_KEY1);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY1);
         assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT1);
 
-        magma.set_key(&rfc5831::CIPHER_KEY2);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY2);
         assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT2);
 
-        magma.set_key(&rfc5831::CIPHER_KEY3);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY3);
         assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT3);
 
-        magma.set_key(&rfc5831::CIPHER_KEY4);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY4);
         assert_eq!(magma.encrypt(rfc5831::PLAINTEXT), rfc5831::CIPHERTEXT4);
     }
 
@@ -598,16 +598,16 @@ mod tests {
         let mut magma = Magma::new();
         magma.set_substitution_box(&Magma::SUBSTITUTION_BOX_RFC5831);
 
-        magma.set_key(&rfc5831::CIPHER_KEY1);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY1);
         assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT1), rfc5831::PLAINTEXT);
 
-        magma.set_key(&rfc5831::CIPHER_KEY2);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY2);
         assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT2), rfc5831::PLAINTEXT);
 
-        magma.set_key(&rfc5831::CIPHER_KEY3);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY3);
         assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT3), rfc5831::PLAINTEXT);
 
-        magma.set_key(&rfc5831::CIPHER_KEY4);
+        magma.set_key_u32(&rfc5831::CIPHER_KEY4);
         assert_eq!(magma.decrypt(rfc5831::CIPHERTEXT4), rfc5831::PLAINTEXT);
     }
 
@@ -615,7 +615,7 @@ mod tests {
     fn encrypt_gost_r_34_13_2015_ecb() {
         use crypto_vectors::gost::r3413_2015;
 
-        let magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         assert_eq!(
             magma.encrypt(r3413_2015::PLAINTEXT1),
             r3413_2015::CIPHERTEXT1_ECB
@@ -637,7 +637,7 @@ mod tests {
     #[test]
     fn decrypt_gost_r_34_13_2015_ecb() {
         use crypto_vectors::gost::r3413_2015;
-        let magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         assert_eq!(
             magma.decrypt(r3413_2015::CIPHERTEXT1_ECB),
             r3413_2015::PLAINTEXT1
@@ -665,7 +665,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::ECB);
         assert!(!encrypted.is_empty());
 
@@ -693,7 +693,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CTR);
         assert!(!encrypted.is_empty());
 
@@ -750,7 +750,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
@@ -782,7 +782,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CBC);
         assert!(!encrypted.is_empty());
 
@@ -809,7 +809,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
@@ -836,7 +836,7 @@ mod tests {
         // Page 40, Section A.2.6
 
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let mut src_buf = Vec::<u8>::new();
         src_buf.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());

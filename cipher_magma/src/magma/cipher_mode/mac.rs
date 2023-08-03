@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn cmac_subkeys_gost_r_34_13_2015() {
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let (k1, k2) = generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
         assert_eq!(k2, 0xbe8b366684a42848_u64);
@@ -145,7 +145,7 @@ mod tests {
         // Page 40, Section A.2.6
 
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let (k1, k2) = generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
@@ -190,7 +190,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         update(&mut magma, &source);
         let mac = finalize(&mut magma);
@@ -205,7 +205,7 @@ mod tests {
 
         use crypto_vectors::gost::r3413_2015;
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         update(&mut magma, &r3413_2015::PLAINTEXT1.to_be_bytes());
         update(&mut magma, &r3413_2015::PLAINTEXT2.to_be_bytes());
@@ -224,7 +224,7 @@ mod tests {
 
         use crypto_vectors::gost::r3413_2015;
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let mut source = Vec::<u8>::new();
         source.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());

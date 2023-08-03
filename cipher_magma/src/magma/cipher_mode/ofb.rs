@@ -88,7 +88,7 @@ mod tests {
 
         use crypto_vectors::gost::r3413_2015;
 
-        let magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let p1 = r3413_2015::PLAINTEXT1;
         let i1 = r[0];
@@ -146,7 +146,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
@@ -177,7 +177,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV

@@ -74,7 +74,7 @@ fn cipher_ctr_acpkm(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
     core.context.feedback.block = Some(counter);
 
     // restore the original cipher key
-    core.set_key(&original_key);
+    core.set_key_u32(&original_key);
 
     result
 }

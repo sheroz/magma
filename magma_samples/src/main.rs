@@ -24,7 +24,7 @@ fn sample_encrypt_block() {
     ];
     println!("Cipher key:\n{:x?}\n", cipher_key);
 
-    magma.set_key(&cipher_key);
+    magma.set_key_u32(&cipher_key);
 
     let source = 0xfedcba9876543210_u64;
     println!("Source block:\n{:x}\n", source);
@@ -44,10 +44,7 @@ fn sample_encrypt_text() {
 
     let cipher_mode = CipherMode::CFB;
 
-    let cipher_key: [u32; 8] = [
-        0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb,
-        0xfcfdfeff,
-    ];
+    let cipher_key = [0xab;32];
     println!("Cipher key:\n{:x?}\n", cipher_key);
 
     let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
@@ -60,10 +57,44 @@ fn sample_encrypt_text() {
 
     let source_bytes = source_text.as_bytes();
 
-    let mut magma = Magma::with_key(&cipher_key);
+    let mut magma = Magma::with_key_u8(&cipher_key);
 
-    let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
-    magma.set_iv(&initialization_vector);
+    let encrypted = magma.cipher(source_bytes, &CipherOperation::Encrypt, &cipher_mode);
+    println!("Encrypted ciphertext:\n{:02x?}\n", encrypted);
+
+    let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
+
+    if cipher_mode.has_padding() {
+        // remove padding bytes
+        decrypted.truncate(source_bytes.len());
+    }
+
+    let decrypted_text = String::from_utf8(decrypted).unwrap();
+    println!("Decrypted text:\n{}\n", decrypted_text);
+
+    assert_eq!(decrypted_text, source_text);
+}
+
+/// Sample of large data encryption in chunks
+fn sample_encrypt_large_buffer() {
+    use cipher_magma::{CipherMode, CipherOperation, Magma};
+
+    let cipher_mode = CipherMode::CFB;
+
+    let cipher_key = [0xab;32];
+    println!("Cipher key:\n{:x?}\n", cipher_key);
+
+    let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
+        Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
+        Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
+        Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. \
+        Quisque iaculis est et est volutpat posuere.";
+
+    println!("Source text:\n{}\n", source_text);
+
+    let source_bytes = source_text.as_bytes();
+
+    let mut magma = Magma::with_key_u8(&cipher_key);
 
     let encrypted = magma.cipher(source_bytes, &CipherOperation::Encrypt, &cipher_mode);
     println!("Encrypted ciphertext:\n{:02x?}\n", encrypted);
@@ -98,7 +129,7 @@ fn sample_calculate_mac() {
     ];
     println!("Message:\n{:02x?}\n", message);
 
-    let mut magma = Magma::with_key(&cipher_key);
+    let mut magma = Magma::with_key_u32(&cipher_key);
     let mac = mac::calculate(&mut magma, &message);
     println!("Calculated MAC:\n{:x}\n", mac);
     assert_eq!(mac, 0x154e7210);

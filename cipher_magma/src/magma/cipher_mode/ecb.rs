@@ -63,7 +63,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let encrypted = encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
@@ -85,7 +85,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let mut encrypted = Vec::<u8>::new();
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT1_ECB.to_be_bytes());
