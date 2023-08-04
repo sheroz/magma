@@ -22,7 +22,7 @@ fn main() {
     sample_calculate_mac_data_chunks();
 
     println!("\n***\n\nFile encryption\n");
-    sample_encrypt_file(); 
+    sample_encrypt_file();
 }
 
 #[cfg(test)]

@@ -13,17 +13,22 @@ pub fn sample_encrypt_file() {
     // opening file
     let source_filename = "README.md";
     println!("Opening source file: {}", source_filename);
+
     let mut source_file = std::fs::File::open(source_filename).expect("Could not open file.");
     let source_len = source_file.metadata().unwrap().len();
 
+    let temp_dir = std::env::temp_dir();
+
     // creating file for encrypted data
     let encrypted_filename = format!("{}.encrypted", source_filename);
-    println!("Creating encrypted file: {}", encrypted_filename);
+    let encrypted_filepath = temp_dir.join(encrypted_filename);
+    println!("Creating encrypted file: {:?}", encrypted_filepath);
+
     let mut encrypted_file = std::fs::File::options()
         .write(true)
         .read(true)
         .create(true)
-        .open(encrypted_filename)
+        .open(encrypted_filepath)
         .expect("Could not create encrypted file.");
 
     println!("Encrypting ...");
@@ -35,6 +40,7 @@ pub fn sample_encrypt_file() {
         let read_count = source_file
             .read(&mut buf)
             .expect("Could not read source file");
+        
         if read_count == 0 {
             break;
         }
@@ -51,9 +57,12 @@ pub fn sample_encrypt_file() {
     println!("Encryption completed.");
 
     let decrypted_filename = format!("{}.decrypted", source_filename);
-    println!("Creating decrypted file: {}", decrypted_filename);
+    let decrypted_filepath = temp_dir.join(decrypted_filename);
+
+    println!("Creating decrypted file: {:?}",  decrypted_filepath);
+
     let mut decrypted_file =
-        std::fs::File::create(decrypted_filename).expect("Could not create decrypted file.");
+        std::fs::File::create(decrypted_filepath).expect("Could not create decrypted file.");
 
     println!("Decrypting ...");
 
@@ -64,6 +73,7 @@ pub fn sample_encrypt_file() {
         let read_count = encrypted_file
             .read(&mut buf)
             .expect("Could not read encrypted file");
+        
         if read_count == 0 {
             break;
         }
