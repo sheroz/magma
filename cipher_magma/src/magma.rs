@@ -45,6 +45,23 @@ pub struct Magma {
     context: Context,
 }
 
+pub enum CipherKey {
+    ArrayU8([u8;32]),
+    ArrayU32([u32;8]),
+}
+
+impl From<[u8;32]> for CipherKey {
+    fn from(array_u8: [u8;32]) -> Self {
+        Self::ArrayU8(array_u8)
+    }
+}
+
+impl From<[u32;8]> for CipherKey {
+    fn from(array_u32: [u32;8]) -> Self {
+        Self::ArrayU32(array_u32)
+    }
+}
+
 #[derive(Clone)]
 struct Context {
     operation: Option<CipherOperation>,
@@ -152,15 +169,41 @@ impl Magma {
         }
     }
 
-    /// Resets the context of stream ciphering
-    pub fn reset_context(&mut self) {
-        self.context = Context::new();
-    }
-
-
-    /// Resets the feedback state of stream ciphering
-    pub fn reset_feedback(&mut self) {
-        self.context.feedback = Feedback::new();
+    /// Returns a new Magma initialized with given cipher key
+    ///
+    /// Uses RFC7836 based substitution box
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - array `[u32;8]` or `[u8;32]`
+    ///
+    /// # Example
+    /// 
+    /// ```
+    /// use cipher_magma::Magma;
+    /// let key: [u32;8] = [
+    ///     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+    ///     ];
+    ///
+    /// let magma = Magma::with_key(key);
+    /// ```
+    /// Or
+    /// 
+    /// ```
+    /// use cipher_magma::Magma;
+    /// let key: [u8;32] = [
+    ///     0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+    ///     0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
+    ///     0xfe, 0xff,
+    ///     ];
+    ///
+    /// let magma = Magma::with_key(key);
+    /// ```
+    pub fn with_key <T> (key: T) -> Magma
+        where CipherKey: From<T> {
+        let mut engine = Magma::new();
+        engine.set_key(key);
+        engine
     }
 
     /// Returns a new Magma initialized with given cipher key
@@ -248,6 +291,20 @@ impl Magma {
             panic!("Initialization vector is empty!");
         }
     }
+    
+    /// Sets the cipher key from array
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - a `[u8;32]' or `[u32;8]` array
+    pub fn set_key <T> (&mut self, key: T) where CipherKey: From<T> {
+        let cipher_key = CipherKey::from(key);
+        match cipher_key {
+            CipherKey::ArrayU8(k) => { self.set_key_u8(&k) }
+            CipherKey::ArrayU32(k) => { self.set_key_u32(&k) }, 
+        };
+    }
+
     /// Sets the cipher key from `[u32;8]` array
     ///
     /// # Arguments
@@ -265,16 +322,18 @@ impl Magma {
     ///
     /// * `bytes` - A `&[u8]` slice with 32 byte elements
     pub fn set_key_u8(&mut self, bytes: &[u8]) {
-        assert!(bytes.len() == 32);
+        self.set_key_u32(&Self::key_from_u8(bytes));
+    }
 
+    fn key_from_u8(bytes: &[u8]) -> [u32;8] {
+        assert!(bytes.len() == 32);
+        let mut key = [0_u32;8];
         let mut array_u8 = [0u8; 4];
         for (index, chunk) in bytes.chunks(4).enumerate() {
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            self.key[index] = u32::from_be_bytes(array_u8);
+            key[index] = u32::from_be_bytes(array_u8);
         }
-
-        self.prepare_round_keys();
-        self.reset_feedback();
+        key 
     }
 
     /// Prepares [round keys](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.3) from the cipher key
@@ -288,6 +347,17 @@ impl Magma {
             let round_key_position = ROUND_KEY_POSITION[index] as usize;
             self.round_keys[index] = self.key[round_key_position];
         }
+    }
+
+    /// Resets the context of stream ciphering
+    pub fn reset_context(&mut self) {
+        self.context = Context::new();
+    }
+
+
+    /// Resets the feedback state of stream ciphering
+    pub fn reset_feedback(&mut self) {
+        self.context.feedback = Feedback::new();
     }
 
     /// [Transformation](https://datatracker.ietf.org/doc/html/rfc8891.html#section-4.2)
@@ -449,6 +519,66 @@ mod tests {
     }
 
     #[test]
+    fn with_key_generic_u32_rfc8891() {
+        use crypto_vectors::gost::rfc8891;
+        let magma = Magma::with_key(rfc8891::CIPHER_KEY.clone());
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn with_key_generic_u8_rfc8891() {
+        use crypto_vectors::gost::rfc8891;
+        let magma = Magma::with_key(rfc8891::CIPHER_KEY_U8_ARRAY.clone());
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn with_key_u32_rfc8891() {
+        use crypto_vectors::gost::rfc8891;
+        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn with_key_u8_rfc8891() {
+        use crypto_vectors::gost::rfc8891;
+        let magma = Magma::with_key_u8(&rfc8891::CIPHER_KEY_U8_ARRAY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn set_key_u32_rfc8891() {
+        use crypto_vectors::gost::rfc8891;
+        let mut magma = Magma::new();
+        magma.set_key_u32(&rfc8891::CIPHER_KEY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn set_key_u8_rfc8891() {
+        use crypto_vectors::gost::rfc8891;
+        let mut magma = Magma::new();
+        magma.set_key_u8(&rfc8891::CIPHER_KEY_U8_ARRAY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn set_key_generic_u32() {
+        use crypto_vectors::gost::rfc8891;
+        let mut magma = Magma::new();
+        magma.set_key(rfc8891::CIPHER_KEY.clone());
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
+    fn set_key_generic_u8() {
+        use crypto_vectors::gost::rfc8891;
+        let mut magma = Magma::new();
+        magma.set_key(rfc8891::CIPHER_KEY_U8_ARRAY.clone());
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+    }
+
+    #[test]
     fn set_initialization_vector() {
         let mut magma = Magma::new();
         let initialization_vector = vec![0x11223344_u64];
@@ -457,33 +587,13 @@ mod tests {
     }
 
     #[test]
-    fn with_key_rfc8891() {
+    fn round_keys_rfc8891() {
+        // Test vectors RFC8891:
+        // https://datatracker.ietf.org/doc/html/rfc8891.html#section-a.3
+
         use crypto_vectors::gost::rfc8891;
         let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
-        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
-    }
-
-    #[test]
-    fn set_key_rfc8891() {
-        use crypto_vectors::gost::rfc8891;
-        let mut magma = Magma::new();
-        magma.set_key_u32(&rfc8891::CIPHER_KEY);
-        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
-    }
-
-    #[test]
-    fn set_keys_from_big_endian_u8_array_rfc8891() {
-        use crypto_vectors::gost::rfc8891;
-        let mut magma = Magma::new();
-        magma.set_key_u8(&rfc8891::CIPHER_KEY_U8_ARRAY);
-        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
-    }
-
-    #[test]
-    fn with_keys_from_big_endian_u8_array_rfc8891() {
-        use crypto_vectors::gost::rfc8891;
-        let magma = Magma::with_key_u8(&rfc8891::CIPHER_KEY_U8_ARRAY);
-        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
+        assert_eq!(magma.round_keys, rfc8891::ROUND_KEYS);
     }
 
     #[test]
@@ -515,16 +625,6 @@ mod tests {
         assert_eq!(magma.transformation_g(g[1].0 .0, g[1].0 .1), g[1].1);
         assert_eq!(magma.transformation_g(g[2].0 .0, g[2].0 .1), g[2].1);
         assert_eq!(magma.transformation_g(g[3].0 .0, g[3].0 .1), g[3].1);
-    }
-
-    #[test]
-    fn round_keys_rfc8891() {
-        // Test vectors RFC8891:
-        // https://datatracker.ietf.org/doc/html/rfc8891.html#section-a.3
-
-        use crypto_vectors::gost::rfc8891;
-        let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
-        assert_eq!(magma.round_keys, rfc8891::ROUND_KEYS);
     }
 
     #[test]

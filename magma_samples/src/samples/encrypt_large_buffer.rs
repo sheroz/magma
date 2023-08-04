@@ -3,7 +3,9 @@ pub fn sample_encrypt_large_buffer() {
     use cipher_magma::{CipherMode, CipherOperation, Magma};
 
     let cipher_mode = CipherMode::CFB;
+
     let key = [0xab;32];
+    let mut magma = Magma::with_key(key);
 
     let txt = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -17,8 +19,6 @@ pub fn sample_encrypt_large_buffer() {
     (0..repeat_count).for_each(|_|source.extend_from_slice(txt));
 
     println!("Source len:{}", source.len());
-
-    let mut magma = Magma::with_key_u8(&key);
 
     let mut encrypted = Vec::<u8>::with_capacity(source.len());
     let source_chunks = source.chunks(4096);

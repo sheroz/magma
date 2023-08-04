@@ -1,11 +1,12 @@
-/// Text encryption sample 
+/// Text encryption sample
 pub fn sample_encrypt_text() {
     use cipher_magma::{CipherMode, CipherOperation, Magma};
 
     let cipher_mode = CipherMode::CFB;
 
-    let key = [0xab;32];
+    let key = [0xab; 32];
     println!("Key:\n{:x?}\n", key);
+    let mut magma = Magma::with_key(key);
 
     let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -14,8 +15,6 @@ pub fn sample_encrypt_text() {
         Quisque iaculis est et est volutpat posuere.";
 
     println!("Source:\n{}\n", String::from_utf8(source.to_vec()).unwrap());
-
-    let mut magma = Magma::with_key_u8(&key);
 
     let encrypted = magma.cipher(source, &CipherOperation::Encrypt, &cipher_mode);
     println!("Encrypted:\n{:02x?}\n", encrypted);

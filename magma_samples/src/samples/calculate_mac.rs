@@ -15,7 +15,7 @@ pub fn sample_calculate_mac() {
     ];
     println!("Message:\n{:02x?}\n", message);
 
-    let mut magma = Magma::with_key_u32(&key);
+    let mut magma = Magma::with_key(key);
     let mac = mac::calculate(&mut magma, &message);
     println!("Calculated MAC:\n{:x}\n", mac);
     assert_eq!(mac, 0x154e7210);
@@ -32,8 +32,7 @@ pub fn sample_calculate_mac_data_chunks() {
         0xfe, 0xff,
     ];
     println!("Key:\n{:x?}\n", key);
-
-    let mut magma = Magma::with_key_u8(&key);
+    let mut magma = Magma::with_key(key);
 
     let message = [
         0x92, 0xde, 0xf0, 0x6b, 0x3c, 0x13, 0x0a, 0x59, 0xdb, 0x54, 0xc7, 0x04, 0xf8, 0x18, 0x9d,
