@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::magma::Magma;
+use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -12,7 +12,12 @@ use crate::magma::Magma;
 pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
     core.ensure_iv_not_empty();
-    let mut register_r = VecDeque::from(core.iv.clone());
+
+    core.update_context(&CipherOperation::Encrypt, &CipherMode::CFB);
+    let mut register_r = match &core.context.feedback.vector {
+        Some(vector) => vector.clone(),
+        None => VecDeque::from(core.iv.clone())
+    };
 
     let mut result = Vec::<u8>::with_capacity(buf.len());
     for chunk in buf.chunks(8) {
@@ -28,6 +33,9 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
         result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
 
+    // update the feedback state
+    core.context.feedback.vector = Some(register_r);
+
     result
 }
 
@@ -41,7 +49,12 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
     core.ensure_iv_not_empty();
-    let mut register_r = VecDeque::from(core.iv.clone());
+
+    core.update_context(&CipherOperation::Decrypt, &CipherMode::CFB);
+    let mut register_r = match &core.context.feedback.vector {
+        Some(vector) => vector.clone(),
+        None => VecDeque::from(core.iv.clone())
+    };
 
     let mut result = Vec::<u8>::with_capacity(buf.len());
     for chunk in buf.chunks(8) {
@@ -56,6 +69,9 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
         result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
+
+    // update the feedback state
+    core.context.feedback.vector = Some(register_r);
 
     result
 }
@@ -84,7 +100,7 @@ mod tests {
         v1.extend_from_slice(&r[1].to_be_bytes());
         assert_eq!(iv.to_be_bytes(), v1.as_slice());
 
-        let magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let p1 = r3413_2015::PLAINTEXT1;
         let i1 = r[0];
@@ -142,7 +158,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
@@ -173,7 +189,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV

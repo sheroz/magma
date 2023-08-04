@@ -34,119 +34,76 @@ Tests are implemented using: [crypto_vectors](https://crates.io/crates/crypto_ve
 
 Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_samples/src/main.rs)
 
-### Sample of block encryption
+### Block encryption sample [encrypt_block.rs](encrypt_block.rs)
 
 ```rust
 use cipher_magma::Magma;
 
-let mut magma = Magma::new();
-
-let cipher_key: [u32; 8] = [
+let key: [u32; 8] = [
     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb,
     0xfcfdfeff,
 ];
-println!("Cipher key:\n{:x?}\n", cipher_key);
-
-magma.set_key(&cipher_key);
+println!("Key:\n{:x?}\n", key);
+let magma = Magma::with_key(key);
 
 let source = 0xfedcba9876543210_u64;
-println!("Source block:\n{:x}\n", source);
+println!("Source:\n{:x}\n", source);
 
 let encrypted = magma.encrypt(source);
-println!("Encrypted ciphertext:\n{:x}\n", encrypted);
+println!("Encrypted:\n{:x}\n", encrypted);
 
 let decrypted = magma.decrypt(encrypted);
-println!("Decrypted block:\n{:x}", decrypted);
+println!("Decrypted:\n{:x}", decrypted);
 
 assert_eq!(decrypted, source);
+
 ```
 
-Output:
-
-```text
-Cipher key:
-[ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
-
-Source block:
-fedcba9876543210
-
-Encrypted ciphertext:
-4ee901e5c2d8ca3d
-
-Decrypted block:
-fedcba9876543210
-```
-
-### Sample of text encryption
+### Text encryption sample [encrypt_text.rs](encrypt_text.rs)
 
 ```rust
 use cipher_magma::{CipherMode, CipherOperation, Magma};
 
 let cipher_mode = CipherMode::CFB;
 
-let cipher_key: [u32; 8] = [
-    0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb,
-    0xfcfdfeff,
-];
-println!("Cipher key:\n{:x?}\n", cipher_key);
+let key = [0xab; 32];
+println!("Key:\n{:x?}\n", key);
+let mut magma = Magma::with_key(key);
 
-let source_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
+let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
     Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
     Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
     Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. \
     Quisque iaculis est et est volutpat posuere.";
 
-println!("Source text:\n{}\n", source_text);
+println!("Source:\n{}\n", String::from_utf8(source.to_vec()).unwrap());
 
-let source_bytes = source_text.as_bytes();
-
-let mut magma = Magma::with_key(&cipher_key);
-
-let initialization_vector = [0x1234567890abcdef_u64, 0x234567890abcdef1_u64];
-magma.set_iv(&initialization_vector);
-
-let encrypted = magma.cipher(source_bytes, &CipherOperation::Encrypt, &cipher_mode);
-println!("Encrypted ciphertext:\n{:02x?}\n", encrypted);
+let encrypted = magma.cipher(source, &CipherOperation::Encrypt, &cipher_mode);
+println!("Encrypted:\n{:02x?}\n", encrypted);
 
 let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
 
 if cipher_mode.has_padding() {
     // remove padding bytes
-    decrypted.truncate(source_bytes.len());
+    decrypted.truncate(source.len());
 }
 
-let decrypted_text = String::from_utf8(decrypted).unwrap();
-println!("Decrypted text:\n{}\n", decrypted_text);
-
-assert_eq!(decrypted_text, source_text);
+assert_eq!(decrypted, source);
+println!("Decrypted:\n{}\n", String::from_utf8(decrypted).unwrap());
 ```
 
-Output:
-
-```text
-Cipher key:
-[ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
-
-Source text:
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
-
-Encrypted ciphertext:
-[05, 86, 62, ec, 37, a3, 5f, aa, a5, 67, ce, 68, 83, ed, f9, d3, de, 9a, bd, 97, b0, f7, 8b, af, b8, cd, 03, 7f, 4c, ed, 4b, fe, d5, c0, a9, 65, 55, de, ca, 6c, 1c, 28, 38, fb, a4, 93, d0, 24, 86, d0, 7f, dd, ea, d4, 36, 16, 3d, c0, 09, da, 65, 0a, ec, 02, 3c, 1b, 1b, c6, f8, dc, 5c, 93, 23, e5, 33, 8c, 5c, 1e, dd, 59, b0, 6e, 8c, 0c, 08, d2, a1, 38, f5, 7c, 93, ff, d8, c2, f8, 1d, 5d, 30, 69, 22, a2, 2c, 1d, 26, 36, e7, 1f, f4, 06, b5, 0b, ef, 18, 13, 69, b1, e2, 12, c0, 20, e1, d7, 45, 28, a6, 0c, 46, 67, 9f, 27, dd, 7c, bd, 3b, 19, 08, 16, 3c, 1a, 13, 11, f2, c0, 44, 66, 5d, a1, 24, c1, ca, f9, 0d, 70, 3e, ea, ac, 8f, a7, 65, e3, bb, 8d, 80, 2f, fd, fa, be, 36, 90, e2, 0c, b0, 5f, 74, 4b, 38, 7c, bb, 9c, 58, 6d, 15, fc, 80, 16, 4d, b5, 4a, 37, 32, 06, d6, a2, 6c, 44, 69, 64, 83, b8, 31, 31, 09, 16, 68, f3, 7a, f5, 97, 99, c9, 38, e6, 5d, f0, d7, 18, 91, e5, b1, 71, d4, 23, 68, 9e, 2d, d0, d7, f7, f0, 89, c7, dc, 87, 72, fd, e8, e0, 40, 0d, 1b, 68, 7b, 13, 00, 8a, 52, af, 25, f3, ce, e4, cc, e3, 75, 70, 9a, 67, 41, 83, 37, d9, 0a, 5e, cb, b9, a7, 4a, 03, 27, b6, 0a, 70, 91, 26, d7, 1c, 15, 98, 75, 49, 32, d7, 30, 1c, 8d, 6d, 95, a1, e8, b2, b1, 07, 3e, 76, f0, b3, c4, 45, 65, 7b, ee, c4, 7b, ed, a9, f7, af, 97, 5e, a9, 27, 0c, 4a, 51, ce, e8, b9, 1a, 8c, ce, 36, d2, e6, e7, 57, bc, cf, 5d, 68, 0f, cb, f3, 92, e5, 23, 7e]
-
-Decrypted text:
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. Quisque iaculis est et est volutpat posuere.
-```
-
-### Sample of Message Authentication Code (MAC) calculation
+### Message Authentication Code (MAC) sample [calculate_mac.rs](calculate_mac.rs)
 
 ```rust
 use cipher_magma::{mac, Magma};
 
-let cipher_key: [u32; 8] = [
-    0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb,
-    0xfcfdfeff,
+let key: [u8; 32] = [
+    0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+    0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
+    0xfe, 0xff,
 ];
-println!("Cipher key:\n{:x?}\n", cipher_key);
+println!("Key:\n{:x?}\n", key);
+let mut magma = Magma::with_key(key);
 
 let message = [
     0x92, 0xde, 0xf0, 0x6b, 0x3c, 0x13, 0x0a, 0x59, 0xdb, 0x54, 0xc7, 0x04, 0xf8, 0x18, 0x9d,
@@ -155,20 +112,116 @@ let message = [
 ];
 println!("Message:\n{:02x?}\n", message);
 
-let mut magma = Magma::with_key(&cipher_key);
-let mac = mac::calculate(&mut magma, &message);
+// update the context
+for chunk in message.chunks(8) {
+    mac::update(&mut magma, &chunk);
+}
+
+// finalize and get result
+let mac = mac::finalize(&mut magma);
 println!("Calculated MAC:\n{:x}\n", mac);
+
+assert_eq!(mac, 0x154e7210);
 ```
 
-Output:
+### File encryption sample [encrypt_file.rs](encrypt_file.rs)
 
-```text
-Cipher key:
-[ffeeddcc, bbaa9988, 77665544, 33221100, f0f1f2f3, f4f5f6f7, f8f9fafb, fcfdfeff]
+```rust
+use cipher_magma::{CipherMode, CipherOperation, Magma};
+use std::io::{Read, Seek, Write};
 
-Message:
-[92, de, f0, 6b, 3c, 13, 0a, 59, db, 54, c7, 04, f8, 18, 9d, 20, 4a, 98, fb, 2e, 67, a8, 02, 4c, 89, 12, 40, 9b, 17, b5, 7e, 41]
+let cipher_mode = CipherMode::CBC;
 
-Calculated MAC:
-154e7210
+let key = [0xab; 32];
+let mut magma = Magma::with_key(key);
+
+// opening file
+let source_filename = "README.md";
+println!("Opening source file: {}", source_filename);
+
+let mut source_file = std::fs::File::open(source_filename).expect("Could not open file.");
+let source_len = source_file.metadata().unwrap().len();
+
+let temp_dir = std::env::temp_dir();
+
+// creating file for encrypted data
+let encrypted_filename = format!("{}.encrypted", source_filename);
+let encrypted_filepath = temp_dir.join(encrypted_filename);
+println!("Creating encrypted file: {:?}", encrypted_filepath);
+
+let mut encrypted_file = std::fs::File::options()
+    .write(true)
+    .read(true)
+    .create(true)
+    .open(encrypted_filepath)
+    .expect("Could not create encrypted file.");
+
+println!("Encrypting ...");
+
+// ensure buf size % 8 bytes
+let mut buf = [0u8; 1024];
+
+loop {
+    let read_count = source_file
+        .read(&mut buf)
+        .expect("Could not read source file");
+
+    if read_count == 0 {
+        break;
+    }
+
+    let ciphertext = magma.cipher(&buf[0..read_count], &CipherOperation::Encrypt, &cipher_mode);
+
+    encrypted_file
+        .write_all(&ciphertext)
+        .expect("Could not write into encrypted file");
+}
+encrypted_file
+    .flush()
+    .expect("Could not flush the encrypted file");
+
+println!("Encryption completed.");
+
+let decrypted_filename = format!("{}.decrypted", source_filename);
+let decrypted_filepath = temp_dir.join(decrypted_filename);
+
+println!("Creating decrypted file: {:?}", decrypted_filepath);
+
+let mut decrypted_file =
+    std::fs::File::create(decrypted_filepath).expect("Could not create decrypted file.");
+
+println!("Decrypting ...");
+
+// rewind the file position to the begining
+encrypted_file
+    .rewind()
+    .expect("Could not rewind encrypted file");
+
+loop {
+    let read_count = encrypted_file
+        .read(&mut buf)
+        .expect("Could not read encrypted file");
+
+    if read_count == 0 {
+        break;
+    }
+
+    let plaintext = magma.cipher(&buf[0..read_count], &CipherOperation::Decrypt, &cipher_mode);
+
+    decrypted_file
+        .write_all(&plaintext)
+        .expect("Could not write into decrypted file");
+}
+decrypted_file
+    .flush()
+    .expect("Could not flush the decrypted file");
+
+if cipher_mode.has_padding() {
+    // remove padding bytes
+    decrypted_file
+        .set_len(source_len)
+        .expect("Could not remove padding bytes from decrypted file");
+}
+
+println!("Decryption completed.");
 ```

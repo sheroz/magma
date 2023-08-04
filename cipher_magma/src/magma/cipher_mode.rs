@@ -17,6 +17,7 @@ pub mod mac;
 /// * **CBC** - Cipher Block Chaining Mode
 /// * **CFB** - Cipher Feedback Mode
 /// * **MAC** - Message Authentication Code Generation Mode
+#[derive(PartialEq, Clone)]
 pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode
     ECB, 
@@ -38,7 +39,7 @@ pub enum CipherMode {
     CFB,
 
     /// Message Authentication Code (MAC) Generation Mode
-    MAC 
+    MAC
 }
 
 impl CipherMode {

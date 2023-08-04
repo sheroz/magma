@@ -9,6 +9,8 @@ use crate::magma::cipher_mode::CipherMode;
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
 pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Encrypt, &CipherMode::CTR_ACPKM);
+
     cipher_ctr_acpkm(core, buf)
 }
 
@@ -20,6 +22,8 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
 pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Decrypt, &CipherMode::CTR_ACPKM);
+
     cipher_ctr_acpkm(core, buf)
 }
 
@@ -35,15 +39,21 @@ fn cipher_ctr_acpkm(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
     let iv_ctr = core.prepare_vector_ctr();
     let mut result = Vec::<u8>::with_capacity(buf.len());
 
-    let original_key = core.cipher_key;
+    let original_key = core.key;
     let mut section_bits_processed = 0;
 
-    for (chunk_index, chunk) in buf.chunks(8).enumerate() {
+    let mut counter = match core.context.feedback.block {
+        Some(block) => block,
+        None => 0
+    };
+
+    for chunk in buf.chunks(8) {
         let mut array_u8 = [0u8;8];
         chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
         let block = u64::from_be_bytes(array_u8);
 
-        let ctr = iv_ctr.wrapping_add(chunk_index as u64);
+        let ctr = iv_ctr.wrapping_add(counter);
+        counter += 1;
 
         let gamma = core.encrypt(ctr);
         let output = gamma ^ block;
@@ -52,14 +62,19 @@ fn cipher_ctr_acpkm(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
         section_bits_processed += 64;
         if section_bits_processed >= Magma::CTR_ACPKM_SECTION_SIZE_N {
+            let state = core.context.clone();
             let section_key = core.cipher(&Magma::CTR_ACPKM_D, &CipherOperation::Encrypt, &CipherMode::ECB);
-            core.set_key_from_bytes(&section_key);
+            core.set_key_u8(&section_key);
+            core.context = state;
             section_bits_processed = 0;
         }
     }
 
+    // update the feedback state
+    core.context.feedback.block = Some(counter);
+
     // restore the original cipher key
-    core.set_key(&original_key);
+    core.set_key_u32(&original_key);
 
     result
 }
@@ -79,7 +94,7 @@ mod tests {
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
         let mut magma = Magma::new();
-        magma.set_key_from_bytes(&ctr_acpkm::CIPHER_KEY);
+        magma.set_key_u8(&ctr_acpkm::CIPHER_KEY);
 
         let encrypted = encrypt(&mut magma, &ctr_acpkm::PLAINTEXT);
         assert!(!encrypted.is_empty());
@@ -97,7 +112,7 @@ mod tests {
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
         let mut magma = Magma::new();
-        magma.set_key_from_bytes(&ctr_acpkm::CIPHER_KEY);
+        magma.set_key_u8(&ctr_acpkm::CIPHER_KEY);
         let decrypted = decrypt(&mut magma, &ctr_acpkm::CIPHERTEXT);
         assert_eq!(decrypted, ctr_acpkm::PLAINTEXT);
     }

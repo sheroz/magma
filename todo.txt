@@ -1,0 +1,3 @@
+add tests for buffer ciphering in chunk
+sample parallel processing of big file in chunks
+bitmap samples in different modes + parallel processing + performance metrics

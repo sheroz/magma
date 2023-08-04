@@ -1,62 +1,109 @@
-use crate::magma::{Magma, utils};
+use crate::{
+    magma::{utils, Magma},
+    CipherMode, CipherOperation,
+};
 
 /// Returns the Message Authentication Code (MAC) value
-/// 
+///
 /// # Arguments
-/// * msg_buf - a slice of `&[u8]` data
-/// 
+/// * core - a mutable reference to `Magma`
+/// * msg_buf - a slice of `&[u8]` data to feed
+///
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-/// 
+///
 /// Page 26, Section 5.6
 pub fn calculate(core: &mut Magma, msg_buf: &[u8]) -> u32 {
+    core.reset_feedback();
+    core.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
 
-    let (k1, k2) = generate_cmac_subkeys(core);
-    let k_n = if (msg_buf.len() % 8) == 0 { k1 } else { k2 };
+    update(core, msg_buf);
+    finalize(core)
+}
 
-    let mut block_feedback = 0u64;
+/// Updates the context of Message Authentication Code (MAC)
+///
+/// # Arguments
+/// * core - a mutable reference to `Magma`
+/// * msg_buf - a slice of `&[u8]` data to feed
+///
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+///
+/// Page 26, Section 5.6
+pub fn update(core: &mut Magma, msg_buf: &[u8]) {
+    core.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
 
-    let mut chunks = msg_buf.chunks(8).peekable();
-    while let Some(chunk) = chunks.next()  {
+    let mut feedback_chained = core.context.feedback.block.is_some();
+    let mut feedback = if feedback_chained {
+        core.context.feedback.block.unwrap()
+    } else {
+        0
+    };
 
-        let mut array_u8 = [0u8;8];
+    let mut chunks = msg_buf.chunks(8);
+    while let Some(chunk) = chunks.next() {
+        let mut array_u8 = [0u8; 8];
         chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
 
-        let last_round = chunks.peek().is_none();
-        if last_round {
-            let chunk_len = chunk.len();
-            if chunk_len < 8 {
-                // Uncomplete chunk, needs padding
-                // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-                // Page 11, Section 4.1.3
-                // Padding the remaining bytes:
-                // 1. Mark the starting byte with 0x80
-                // 2. Other bytes already padded with 0x00
-                array_u8[chunk_len] = 0x80_u8;
-            }
+        let chunk_len = chunk.len();
+        if chunk_len < 8 {
+            // Uncomplete chunk, needs padding
+            // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+            // Page 11, Section 4.1.3
+            // Padding the remaining bytes:
+            // 1. Mark the starting byte with 0x80
+            // 2. Other bytes already padded with 0x00
+            array_u8[chunk_len] = 0x80_u8;
+            core.context.padded = true;
         }
 
-        let mut block_in = u64::from_be_bytes(array_u8);
+        let block_in = u64::from_be_bytes(array_u8);
 
-        block_in ^= block_feedback;
+        feedback = block_in
+            ^ if feedback_chained {
+                core.encrypt(feedback)
+            } else {
+                feedback
+            };
 
-        if last_round {
-            block_in ^= k_n;
-        }
-
-        block_feedback = core.encrypt(block_in);
+        feedback_chained = true;
     }
 
-    let (mac, _) = utils::u64_split(block_feedback);
+    // update the feedback state
+    core.context.feedback.block = Some(feedback);
+}
 
+/// Finalizes the current context and returns the Message Authentication Code (MAC) value
+///
+/// # Arguments
+/// * core - a mutable reference to `Magma`
+///
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+///
+/// Page 26, Section 5.6
+pub fn finalize(core: &mut Magma) -> u32 {
+    core.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
+
+    let (k1, k2) = generate_cmac_subkeys(core);
+    let k_n = if core.context.padded { k2 } else { k1 };
+
+    let finalizer = match core.context.feedback.block {
+        Some(finalizer) => finalizer ^ k_n,
+        None => panic!("Context not found, please use update() before finalizing."),
+    };
+
+    let final_block = core.encrypt(finalizer);
+    let (mac, _) = utils::u64_split(final_block);
+
+    core.reset_context();
     mac
 }
 
 /// Returns subkeys for CMAC as `(u64, u64)`
-/// 
-/// Key generation algorithm is based on: 
-/// 
+///
+/// Key generation algorithm is based on:
+///
 /// [OMAC1 a.k.a CMAC](https://en.wikipedia.org/wiki/One-key_MAC)
-fn generate_cmac_subkeys(core: &mut Magma) -> (u64, u64){
+fn generate_cmac_subkeys(core: &mut Magma) -> (u64, u64) {
     let r = core.encrypt(0x0_u64);
 
     let b64 = 0x1b_u64;
@@ -77,7 +124,7 @@ fn generate_cmac_subkeys(core: &mut Magma) -> (u64, u64){
     (k1, k2)
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 mod tests {
 
     use super::*;
@@ -85,7 +132,7 @@ mod tests {
     #[test]
     fn cmac_subkeys_gost_r_34_13_2015() {
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let (k1, k2) = generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
         assert_eq!(k2, 0xbe8b366684a42848_u64);
@@ -98,7 +145,7 @@ mod tests {
         // Page 40, Section A.2.6
 
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let (k1, k2) = generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
@@ -114,7 +161,7 @@ mod tests {
         assert_eq!(i2, 0xf053f8006cebef80_u64);
         let o2 = magma.encrypt(i2);
         assert_eq!(o2, 0xc89ed814fd5e18e9_u64);
-        
+
         let i3 = o2 ^ r3413_2015::PLAINTEXT3;
         assert_eq!(i3, 0x8206233a9af61aa5_u64);
         let o3 = magma.encrypt(i3);
@@ -130,7 +177,7 @@ mod tests {
     }
 
     #[test]
-    fn cipher_mac_core_gost_r_34_13_2015() {
+    fn mac_update_1x256bytes() {
         // Test vectors GOST R 34.13-2015
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 40, Section A.2.6
@@ -143,10 +190,56 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
+
+        update(&mut magma, &source);
+        let mac = finalize(&mut magma);
+        assert_eq!(mac, r3413_2015::MAC);
+    }
+
+    #[test]
+    fn mac_update_4x8bytes() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 40, Section A.2.6
+
+        use crypto_vectors::gost::r3413_2015;
+
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
+
+        update(&mut magma, &r3413_2015::PLAINTEXT1.to_be_bytes());
+        update(&mut magma, &r3413_2015::PLAINTEXT2.to_be_bytes());
+        update(&mut magma, &r3413_2015::PLAINTEXT3.to_be_bytes());
+        update(&mut magma, &r3413_2015::PLAINTEXT4.to_be_bytes());
+
+        let mac = finalize(&mut magma);
+        assert_eq!(mac, r3413_2015::MAC);
+    }
+
+    #[test]
+    fn mac_calculate() {
+        // Test vectors GOST R 34.13-2015
+        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
+        // Page 40, Section A.2.6
+
+        use crypto_vectors::gost::r3413_2015;
+
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
+
+        let mut source = Vec::<u8>::new();
+        source.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT2.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
+        source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
         let mac = calculate(&mut magma, &source);
         assert_eq!(mac, r3413_2015::MAC);
     }
-}
 
+    #[test]
+    #[should_panic]
+    fn mac_finilize_no_context() {
+        let mut magma = Magma::new();
+        finalize(&mut magma);
+    }
+}

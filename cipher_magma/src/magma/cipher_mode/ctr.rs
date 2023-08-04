@@ -1,4 +1,4 @@
-use crate::magma::Magma;
+use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -8,6 +8,7 @@ use crate::magma::Magma;
 /// 
 /// Page 15, Section 5.2.1
 pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Encrypt, &CipherMode::CTR);
     cipher_ctr(core, buf)
 }
 
@@ -19,6 +20,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// 
 /// Page 15, Section 5.2.2
 pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+    core.update_context(&CipherOperation::Decrypt, &CipherMode::CTR);
     cipher_ctr(core, buf)
 }
 
@@ -29,22 +31,32 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 14, Section 5.2
-fn cipher_ctr(core: &Magma, buf: &[u8]) -> Vec<u8> {
+fn cipher_ctr(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
     let iv_ctr = core.prepare_vector_ctr();
+    let mut counter = match core.context.feedback.block {
+        Some(block) => block,
+        None => 0
+    };
+
     let mut result = Vec::<u8>::with_capacity(buf.len());
 
-    for (chunk_index, chunk) in buf.chunks(8).enumerate() {
+    for chunk in buf.chunks(8) {
         let mut array_u8 = [0u8;8];
         chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
         let block = u64::from_be_bytes(array_u8);
 
-        let ctr = iv_ctr.wrapping_add(chunk_index as u64);
+        let ctr = iv_ctr.wrapping_add(counter);
+        counter += 1;
+
         let gamma = core.encrypt(ctr);
         let output =  gamma ^ block;
 
         result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
+
+    // update the feedback state
+    core.context.feedback.block = Some(counter);
 
     result
 }
@@ -61,7 +73,7 @@ mod tests {
         // Page 36, Section A.2.2
 
         use crypto_vectors::gost::r3413_2015;
-        let magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let iv = 0x12345678_u32;
 
@@ -114,7 +126,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
         let encrypted = encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
@@ -136,7 +148,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(&r3413_2015::CIPHER_KEY);
+        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
 
         let mut encrypted = Vec::<u8>::new();
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT1_CTR.to_be_bytes());
