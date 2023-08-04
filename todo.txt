@@ -1,11 +1,15 @@
-magma: cfb::encrypt_stream() -> (encrypted, state)
-magma.reset_state() 
+with_key() -> generic version
+pub <T> fn with_key(key: &[T])
+where T: [u8;32], [u32;8]
 
-key, ciper mode, ciper operation change resets state
+pub <T> set_key(key: &[T])
+where T: [u8;32], [u32;8]
+ 
+pub <T> set_key_from_slice(slice : &[T])
+where T: [u8], [u32]
 
-key = [0xAB;256];
-
-mac_update()
-mac_finalize()
-
-remove MAC from cipher modes
+add tests for buffer ciphering in chunk
+complete big buffer ciphering in chunk
+sample big file cipering in chunks
+sample parallel processing of big file in chunks
+bitmap samples in different modes + parallel processing + performance metrics

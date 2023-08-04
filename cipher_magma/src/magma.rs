@@ -38,7 +38,7 @@ use cipher_operation::CipherOperation;
 
 /// Block Cipher "Magma"
 pub struct Magma {
-    cipher_key: [u32; 8],
+    key: [u32; 8],
     round_keys: [u32; 32],
     substitution_box: [u8; 128],
     iv: Vec<u64>,
@@ -144,7 +144,7 @@ impl Magma {
     /// ```
     pub fn new() -> Magma {
         Magma {
-            cipher_key: [0u32; 8],
+            key: [0u32; 8],
             round_keys: [0u32; 32],
             substitution_box: Magma::SUBSTITUTION_BOX_RFC7836.clone(),
             iv: Vec::from(Magma::IV_GOST_R3413_2015),
@@ -169,20 +169,20 @@ impl Magma {
     ///
     /// # Arguments
     ///
-    /// * `cipher_key` - A reference to `[u32;8]` array
+    /// * `key` - A reference to `[u32;8]` array
     ///
     /// # Example
     /// ```
     /// use cipher_magma::Magma;
-    /// let cipher_key: [u32;8] = [
+    /// let key: [u32;8] = [
     ///     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
     ///     ];
     ///
-    /// let magma = Magma::with_key_u32(&cipher_key);
+    /// let magma = Magma::with_key_u32(&key);
     /// ```
-    pub fn with_key_u32(cipher_key: &[u32; 8]) -> Magma {
+    pub fn with_key_u32(key: &[u32; 8]) -> Magma {
         let mut engine = Magma::new();
-        engine.set_key_u32(cipher_key);
+        engine.set_key_u32(key);
         engine
     }
 
@@ -192,22 +192,22 @@ impl Magma {
     ///
     /// # Arguments
     ///
-    /// * `cipher_key` - A reference to `[u8;32]` array
+    /// * `key` - A reference to `[u8;32]` array
     ///
     /// # Example
     /// ```
     /// use cipher_magma::Magma;
-    /// let cipher_key: [u8; 32] = [
+    /// let key: [u8; 32] = [
     ///    0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
     ///    0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
     ///    0xfe, 0xff,
     /// ];
     ///
-    /// let magma = Magma::with_key_u8(&cipher_key);
+    /// let magma = Magma::with_key_u8(&key);
     /// ```
-    pub fn with_key_u8(cipher_key: &[u8; 32]) -> Magma {
+    pub fn with_key_u8(key: &[u8; 32]) -> Magma {
         let mut engine = Magma::new();
-        engine.set_key_u8(cipher_key);
+        engine.set_key_u8(key);
         engine
     }
 
@@ -252,9 +252,9 @@ impl Magma {
     ///
     /// # Arguments
     ///
-    /// * `cipher_key` - A reference to `[u32;8]` array
-    pub fn set_key_u32(&mut self, cipher_key: &[u32; 8]) {
-        self.cipher_key.clone_from(cipher_key);
+    /// * `key` - A reference to `[u32;8]` array
+    pub fn set_key_u32(&mut self, key: &[u32; 8]) {
+        self.key.clone_from(key);
         self.prepare_round_keys();
         self.reset_feedback();
     }
@@ -263,14 +263,14 @@ impl Magma {
     ///
     /// # Arguments
     ///
-    /// * `cipher_key_bytes` - A `&[u8]` slice with 32 byte elements
-    pub fn set_key_u8(&mut self, cipher_key_bytes: &[u8]) {
-        assert!(cipher_key_bytes.len() == 32);
+    /// * `bytes` - A `&[u8]` slice with 32 byte elements
+    pub fn set_key_u8(&mut self, bytes: &[u8]) {
+        assert!(bytes.len() == 32);
 
         let mut array_u8 = [0u8; 4];
-        for (index, chunk) in cipher_key_bytes.chunks(4).enumerate() {
+        for (index, chunk) in bytes.chunks(4).enumerate() {
             chunk.iter().enumerate().for_each(|t| array_u8[t.0] = *t.1);
-            self.cipher_key[index] = u32::from_be_bytes(array_u8);
+            self.key[index] = u32::from_be_bytes(array_u8);
         }
 
         self.prepare_round_keys();
@@ -286,7 +286,7 @@ impl Magma {
 
         for index in 0..32 {
             let round_key_position = ROUND_KEY_POSITION[index] as usize;
-            self.round_keys[index] = self.cipher_key[round_key_position];
+            self.round_keys[index] = self.key[round_key_position];
         }
     }
 
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn default_initialization() {
         let magma = Magma::new();
-        assert_eq!(magma.cipher_key, [0u32; 8]);
+        assert_eq!(magma.key, [0u32; 8]);
         assert_eq!(magma.round_keys, [0u32; 32]);
         assert_eq!(magma.substitution_box, Magma::SUBSTITUTION_BOX_RFC7836);
         assert_eq!(magma.iv, Magma::IV_GOST_R3413_2015);
@@ -460,7 +460,7 @@ mod tests {
     fn with_key_rfc8891() {
         use crypto_vectors::gost::rfc8891;
         let magma = Magma::with_key_u32(&rfc8891::CIPHER_KEY);
-        assert_eq!(magma.cipher_key, rfc8891::CIPHER_KEY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
     }
 
     #[test]
@@ -468,7 +468,7 @@ mod tests {
         use crypto_vectors::gost::rfc8891;
         let mut magma = Magma::new();
         magma.set_key_u32(&rfc8891::CIPHER_KEY);
-        assert_eq!(magma.cipher_key, rfc8891::CIPHER_KEY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
     }
 
     #[test]
@@ -476,14 +476,14 @@ mod tests {
         use crypto_vectors::gost::rfc8891;
         let mut magma = Magma::new();
         magma.set_key_u8(&rfc8891::CIPHER_KEY_U8_ARRAY);
-        assert_eq!(magma.cipher_key, rfc8891::CIPHER_KEY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
     }
 
     #[test]
     fn with_keys_from_big_endian_u8_array_rfc8891() {
         use crypto_vectors::gost::rfc8891;
         let magma = Magma::with_key_u8(&rfc8891::CIPHER_KEY_U8_ARRAY);
-        assert_eq!(magma.cipher_key, rfc8891::CIPHER_KEY);
+        assert_eq!(magma.key, rfc8891::CIPHER_KEY);
     }
 
     #[test]

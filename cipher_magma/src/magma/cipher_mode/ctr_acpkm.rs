@@ -39,7 +39,7 @@ fn cipher_ctr_acpkm(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
     let iv_ctr = core.prepare_vector_ctr();
     let mut result = Vec::<u8>::with_capacity(buf.len());
 
-    let original_key = core.cipher_key;
+    let original_key = core.key;
     let mut section_bits_processed = 0;
 
     let mut counter = match core.context.feedback.block {
