@@ -27,7 +27,10 @@ pub fn sample_encrypt_file() {
         .expect("Could not create encrypted file.");
 
     println!("Encrypting ...");
+    
+    // ensure buf size % 8 bytes
     let mut buf = [0u8; 1024];
+    
     loop {
         let read_count = source_file
             .read(&mut buf)
@@ -36,13 +39,8 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let mut ciphertext =
+        let ciphertext =
             magma.cipher(&buf[0..read_count], &CipherOperation::Encrypt, &cipher_mode);
-
-        if cipher_mode.has_padding() {
-            // remove padding bytes
-            ciphertext.truncate(read_count);
-        }
 
         encrypted_file
             .write_all(&ciphertext)
@@ -70,13 +68,8 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let mut plaintext =
+        let plaintext =
             magma.cipher(&buf[0..read_count], &CipherOperation::Decrypt, &cipher_mode);
-
-        if cipher_mode.has_padding() {
-            // remove padding bytes
-            plaintext.truncate(read_count);
-        }
 
         decrypted_file
             .write_all(&plaintext)
