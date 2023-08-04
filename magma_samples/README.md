@@ -34,7 +34,7 @@ Tests are implemented using: [crypto_vectors](https://crates.io/crates/crypto_ve
 
 Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_samples/src/main.rs)
 
-### Block encryption sample [encrypt_block.rs](encrypt_block.rs)
+### Block encryption sample: [encrypt_block.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/encrypt_block.rs)
 
 ```rust
 use cipher_magma::Magma;
@@ -59,7 +59,7 @@ assert_eq!(decrypted, source);
 
 ```
 
-### Text encryption sample [encrypt_text.rs](encrypt_text.rs)
+### Text encryption sample: [encrypt_text.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/encrypt_text.rs)
 
 ```rust
 use cipher_magma::{CipherMode, CipherOperation, Magma};
@@ -92,7 +92,7 @@ assert_eq!(decrypted, source);
 println!("Decrypted:\n{}\n", String::from_utf8(decrypted).unwrap());
 ```
 
-### Message Authentication Code (MAC) sample [calculate_mac.rs](calculate_mac.rs)
+### Message Authentication Code (MAC) sample: [calculate_mac.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/calculate_mac.rs)
 
 ```rust
 use cipher_magma::{mac, Magma};
@@ -124,7 +124,7 @@ println!("Calculated MAC:\n{:x}\n", mac);
 assert_eq!(mac, 0x154e7210);
 ```
 
-### File encryption sample [encrypt_file.rs](encrypt_file.rs)
+### File encryption sample: [encrypt_file.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/encrypt_file.rs)
 
 ```rust
 use cipher_magma::{CipherMode, CipherOperation, Magma};
