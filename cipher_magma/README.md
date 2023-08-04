@@ -32,7 +32,7 @@ Tests are implemented using: [crypto_vectors](https://crates.io/crates/crypto_ve
 
 ## Usage
 
-Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_samples/src/main.rs)
+Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples)
 
 ### Block encryption sample: [encrypt_block.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/encrypt_block.rs)
 
