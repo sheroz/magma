@@ -40,19 +40,25 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
 use cipher_magma::Magma;
 
 let key: [u32; 8] = [
+let key: [u32; 8] = [
     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb,
     0xfcfdfeff,
 ];
 println!("Key:\n{:x?}\n", key);
 let magma = Magma::with_key(key);
+println!("Key:\n{:x?}\n", key);
+let magma = Magma::with_key(key);
 
 let source = 0xfedcba9876543210_u64;
+println!("Source:\n{:x}\n", source);
 println!("Source:\n{:x}\n", source);
 
 let encrypted = magma.encrypt(source);
 println!("Encrypted:\n{:x}\n", encrypted);
+println!("Encrypted:\n{:x}\n", encrypted);
 
 let decrypted = magma.decrypt(encrypted);
+println!("Decrypted:\n{:x}", decrypted);
 println!("Decrypted:\n{:x}", decrypted);
 
 assert_eq!(decrypted, source);
@@ -69,7 +75,11 @@ let cipher_mode = CipherMode::CFB;
 let key = [0xab; 32];
 println!("Key:\n{:x?}\n", key);
 let mut magma = Magma::with_key(key);
+let key = [0xab; 32];
+println!("Key:\n{:x?}\n", key);
+let mut magma = Magma::with_key(key);
 
+let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
 let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
     Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
     Praesent tristique rutrum odio at rhoncus. Duis non ligula ut diam tristique commodo. \
@@ -77,7 +87,10 @@ let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
     Quisque iaculis est et est volutpat posuere.";
 
 println!("Source:\n{}\n", String::from_utf8(source.to_vec()).unwrap());
+println!("Source:\n{}\n", String::from_utf8(source.to_vec()).unwrap());
 
+let encrypted = magma.cipher(source, &CipherOperation::Encrypt, &cipher_mode);
+println!("Encrypted:\n{:02x?}\n", encrypted);
 let encrypted = magma.cipher(source, &CipherOperation::Encrypt, &cipher_mode);
 println!("Encrypted:\n{:02x?}\n", encrypted);
 
@@ -86,8 +99,11 @@ let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_
 if cipher_mode.has_padding() {
     // remove padding bytes
     decrypted.truncate(source.len());
+    decrypted.truncate(source.len());
 }
 
+assert_eq!(decrypted, source);
+println!("Decrypted:\n{}\n", String::from_utf8(decrypted).unwrap());
 assert_eq!(decrypted, source);
 println!("Decrypted:\n{}\n", String::from_utf8(decrypted).unwrap());
 ```
@@ -101,7 +117,13 @@ let key: [u8; 32] = [
     0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
     0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
     0xfe, 0xff,
+let key: [u8; 32] = [
+    0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+    0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
+    0xfe, 0xff,
 ];
+println!("Key:\n{:x?}\n", key);
+let mut magma = Magma::with_key(key);
 println!("Key:\n{:x?}\n", key);
 let mut magma = Magma::with_key(key);
 
@@ -119,7 +141,16 @@ for chunk in message.chunks(8) {
 
 // finalize and get result
 let mac = mac::finalize(&mut magma);
+// update the context
+for chunk in message.chunks(8) {
+    mac::update(&mut magma, &chunk);
+}
+
+// finalize and get result
+let mac = mac::finalize(&mut magma);
 println!("Calculated MAC:\n{:x}\n", mac);
+
+assert_eq!(mac, 0x154e7210);
 
 assert_eq!(mac, 0x154e7210);
 ```
@@ -215,6 +246,13 @@ loop {
 decrypted_file
     .flush()
     .expect("Could not flush the decrypted file");
+    decrypted_file
+        .write_all(&plaintext)
+        .expect("Could not write into decrypted file");
+}
+decrypted_file
+    .flush()
+    .expect("Could not flush the decrypted file");
 
 if cipher_mode.has_padding() {
     // remove padding bytes
@@ -222,6 +260,13 @@ if cipher_mode.has_padding() {
         .set_len(source_len)
         .expect("Could not remove padding bytes from decrypted file");
 }
+if cipher_mode.has_padding() {
+    // remove padding bytes
+    decrypted_file
+        .set_len(source_len)
+        .expect("Could not remove padding bytes from decrypted file");
+}
 
+println!("Decryption completed.");
 println!("Decryption completed.");
 ```
