@@ -1,3 +1,5 @@
+//! Implements Output Feedback (OFB) mode
+
 use std::collections::VecDeque;
 
 use crate::{magma::Magma, CipherOperation, CipherMode};
@@ -16,7 +18,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns decrypted result as `Vec<u8>`
 /// 
-/// Implements buffer decrypting in Output Feedback (OFB) Mode
+/// Implements buffer decrypting in Output Feedback (OFB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
@@ -28,7 +30,7 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns encrypted/decrypted result as `Vec<u8>`
 /// 
-/// Implements Output Feedback (OFB) Mode
+/// Implements the core of Output Feedback (OFB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 

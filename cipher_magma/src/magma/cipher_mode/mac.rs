@@ -1,9 +1,11 @@
+//! Implements Message Authentication Code (MAC)
+
 use crate::{
     magma::{utils, Magma},
     CipherMode, CipherOperation,
 };
 
-/// Returns the Message Authentication Code (MAC) value
+/// Returns the Message Authentication Code (MAC)
 ///
 /// # Arguments
 /// * core - a mutable reference to `Magma`
@@ -72,7 +74,7 @@ pub fn update(core: &mut Magma, msg_buf: &[u8]) {
     core.context.feedback.block = Some(feedback);
 }
 
-/// Finalizes the current context and returns the Message Authentication Code (MAC) value
+/// Finalizes the current context and returns the Message Authentication Code (MAC)
 ///
 /// # Arguments
 /// * core - a mutable reference to `Magma`

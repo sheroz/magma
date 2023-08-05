@@ -1,4 +1,4 @@
-/// **Cipher operation**
+//! Cipher operation
 #[derive(PartialEq, Clone)]
 pub enum CipherOperation {
     /// Encrypting operation

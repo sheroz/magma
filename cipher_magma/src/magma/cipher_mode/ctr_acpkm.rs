@@ -1,9 +1,11 @@
+//! Implements Counter Encryption (CTR_ACPKM) mode
+
 use crate::magma::{Magma, CipherOperation};
 use crate::magma::cipher_mode::CipherMode;
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
-/// Implements buffer encrypting in Counter Encryption (CTR_ACPKM) Mode
+/// Implements buffer encrypting in Counter Encryption (CTR_ACPKM) mode
 /// 
 /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
 /// 
@@ -16,7 +18,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns decrypted result as `Vec<u8>`
 /// 
-/// Implements buffer decrypting in Counter Encryption (CTR_ACPKM) Mode
+/// Implements buffer decrypting in Counter Encryption (CTR_ACPKM) mode
 /// 
 /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
 /// 
@@ -29,7 +31,7 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns encrypted/decrypted as `Vec<u8>`
 /// 
-/// Implements Counter Encryption (CTR_ACPKM) Mode
+/// Implements the core of Counter Encryption (CTR_ACPKM) mode
 /// 
 /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
 /// 

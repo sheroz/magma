@@ -1,8 +1,8 @@
-//! **Block Cipher "Magma"**
+//! Block Cipher "Magma"
 //!
 //! Implemented and tested according to specifications:
-//! 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a GOST R 34.12-2015
-//! 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a GOST 28147-89
+//! 1. [RFC 8891](https://datatracker.ietf.org/doc/html/rfc8891.html) a.k.a **GOST R 34.12-2015**
+//! 2. [RFC 5830](https://datatracker.ietf.org/doc/html/rfc5830) a.k.a **GOST 28147-89**
 //! 3. Block Cipher Modes: [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 //!
 //! [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
@@ -13,19 +13,6 @@
 //! * **CBC** - Cipher Block Chaining Mode
 //! * **CFB** - Cipher Feedback Mode
 //! * **MAC** - Message Authentication Code Generation Mode
-
-/*
-    RFC 5831: GOST R 34.11-94
-    hash function:
-    https://datatracker.ietf.org/doc/rfc5831/
-    https://datatracker.ietf.org/doc/html/rfc4357
-    https://en.wikipedia.org/wiki/GOST_(hash_function)
-
-    GOST R 34.11-94
-    GOST 34.311-95
-    GOST hash function
-    GOST 28147-89 IMIT
-*/
 
 pub mod cipher_mode;
 pub mod cipher_operation;

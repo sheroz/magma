@@ -1,8 +1,10 @@
+//! Implements Counter Encryption (CTR) mode
+
 use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
-/// Implements buffer encrypting in Counter Encryption (CTR) Mode
+/// Implements buffer encrypting in Counter Encryption (CTR) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
@@ -14,7 +16,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns decrypted result as `Vec<u8>`
 /// 
-/// Implements buffer decrypting in Counter Encryption (CTR) Mode
+/// Implements buffer decrypting in Counter Encryption (CTR) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
@@ -26,7 +28,7 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns encrypted/decrypted result as `Vec<u8>`
 /// 
-/// Implements Counter Encryption (CTR) Mode
+/// Implements the core Counter Encryption (CTR) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
