@@ -1,10 +1,12 @@
+//! Implements Cipher Feedback (CFB) mode
+
 use std::collections::VecDeque;
 
 use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
-/// Implements buffer encrypting in Cipher Feedback (CFB) Mode
+/// Implements buffer encrypting in Cipher Feedback (CFB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
@@ -41,7 +43,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns decrypted result as `Vec<u8>`
 /// 
-/// Implements buffer encrypting in Cipher Feedback (CFB) Mode
+/// Implements buffer encrypting in Cipher Feedback (CFB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 

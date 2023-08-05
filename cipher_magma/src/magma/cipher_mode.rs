@@ -1,3 +1,15 @@
+//! Cipher Mode
+//! 
+//! [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+//! 
+//! * **ECB** - Electronic Codebook Mode
+//! * **CTR** - Counter Encryption Mode
+//! * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html), [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
+//! * **OFB** - Output Feedback Mode
+//! * **CBC** - Cipher Block Chaining Mode
+//! * **CFB** - Cipher Feedback Mode
+//! * **MAC** - Message Authentication Code Generation Mode
+
 pub mod ecb;
 pub mod ctr;
 pub mod ctr_acpkm;
@@ -6,17 +18,7 @@ pub mod cbc;
 pub mod cfb;
 pub mod mac;
 
-/// **Cipher Mode**
-/// 
-/// [Cipher Modes](https://tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
-/// 
-/// * **ECB** - Electronic Codebook Mode
-/// * **CTR** - Counter Encryption Mode
-/// * **CTR-ACPKM** - Counter Encryption Mode as per [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html), [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
-/// * **OFB** - Output Feedback Mode
-/// * **CBC** - Cipher Block Chaining Mode
-/// * **CFB** - Cipher Feedback Mode
-/// * **MAC** - Message Authentication Code Generation Mode
+/// Cipher Mode
 #[derive(PartialEq, Clone)]
 pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode

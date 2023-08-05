@@ -1,3 +1,5 @@
+//! Utility functions
+
 /// Returns splitted into `(u32, u32)` result
 /// 
 /// # Argument 

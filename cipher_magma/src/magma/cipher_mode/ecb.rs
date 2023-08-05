@@ -1,8 +1,10 @@
+//! Implements Electronic Codebook (ECB) mode
+
 use crate::{magma::Magma, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
-/// Implements buffer encrypting in Electronic Codebook (ECB) Mode
+/// Implements buffer encrypting in Electronic Codebook (ECB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
@@ -16,7 +18,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns decrypted result as `Vec<u8>`
 /// 
-/// Implements buffer decrypting in Electronic Codebook (ECB) Mode
+/// Implements buffer decrypting in Electronic Codebook (ECB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
@@ -30,7 +32,7 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 
 /// Returns encrypted/decrypted result as `Vec<u8>`
 /// 
-/// Implements Electronic Codebook (ECB) Mode
+/// Implements the core of Electronic Codebook (ECB) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
