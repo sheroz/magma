@@ -16,8 +16,17 @@
 
 pub mod magma;
 
-// re-export the magma core
+// re-export the Magma
 pub use magma::Magma;
+
+// re-export the core operations
+pub use magma::core::Core;
+
+// re-export the stream operations
+pub use magma::stream::Stream;
+
+// re-export constants
+pub use magma::constants::*;
 
 // re-export the CipherOperation
 pub use magma::cipher_operation::CipherOperation;
