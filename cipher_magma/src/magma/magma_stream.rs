@@ -1,30 +1,32 @@
 use std::collections::VecDeque;
-use crate::*;
 
-pub struct Stream {
-    pub core: Core,
-    pub (crate) context: Context,
+use crate::*;
+use crate::magma::cipher_key::CipherKey;
+
+pub struct MagmaStream {
+    pub magma: Magma,
+    pub (crate) context: MagmaStreamContext,
 }
 
 #[derive(Clone)]
-struct Context {
-    operation: Option<CipherOperation>,
-    mode: Option<CipherMode>,
-    iv: Vec<u64>,
-    padded: bool,
-    feedback: Feedback
+pub (crate) struct MagmaStreamContext {
+    pub (crate) operation: Option<CipherOperation>,
+    pub (crate) mode: Option<CipherMode>,
+    pub (crate) iv: Vec<u64>,
+    pub (crate) padded: bool,
+    pub (crate) feedback: Feedback
 }
 
-impl Context {
+impl MagmaStreamContext {
     fn new() -> Self {
-        Context { operation: None, mode: None, iv: Vec::from(IV_GOST_R3413_2015), padded: false, feedback: Feedback::new() }
+        MagmaStreamContext { operation: None, mode: None, iv: Vec::from(IV_GOST_R3413_2015), padded: false, feedback: Feedback::new() }
     }
 }
 
 #[derive(Clone)]
-struct Feedback {
-    block: Option<u64>,
-    vector: Option<VecDeque<u64>>
+pub (crate) struct Feedback {
+    pub (crate) block: Option<u64>,
+    pub (crate) vector: Option<VecDeque<u64>>
 }
 
 impl Feedback {
@@ -33,13 +35,74 @@ impl Feedback {
     } 
 }
 
-impl Stream {
+impl MagmaStream {
+
+    /// Returns a new `MagmaStream`
     pub fn new() -> Self {
-        Stream {
-            core: Core::new(),
-            context: Context::new()
+        MagmaStream {
+            magma: Magma::new(),
+            context: MagmaStreamContext::new()
         }
     }
+
+    /// Returns a new `MagmaStream` initialized with given cipher key
+    ///
+    /// Uses RFC7836 based substitution box
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - array `[u32;8]` or `[u8;32]`
+    ///
+    /// # Example
+    /// 
+    /// ```
+    /// use cipher_magma::MagmaStream;
+    /// let key: [u32;8] = [
+    ///     0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+    ///     ];
+    ///
+    /// let magma_stream = MagmaStream::with_key(key);
+    /// ```
+    /// Or
+    /// 
+    /// ```
+    /// use cipher_magma::MagmaStream;
+    /// let key: [u8;32] = [
+    ///     0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+    ///     0x00, 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd,
+    ///     0xfe, 0xff,
+    ///     ];
+    ///
+    /// let magma_stream = MagmaStream::with_key(key);
+    /// ```
+    pub fn with_key <T> (key: T) -> Self 
+        where CipherKey: From<T> {
+        MagmaStream {
+            magma: Magma::with_key(key),
+            context: MagmaStreamContext::new()
+        }
+    }
+  
+    /// Sets the cipher key from array
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - a `[u8;32]' or `[u32;8]` array
+    pub fn set_key <T> (&mut self, key: T) where CipherKey: From<T> {
+        self.magma.set_key(key);
+        self.reset_feedback();
+    }
+
+    /// Sets the substitution box
+    ///
+    /// # Arguments
+    ///
+    /// * `substitution_box` - A reference to `[u8;128]` array
+    pub fn set_substitution_box(&mut self, substitution_box: &[u8; 128]) {
+        self.magma.set_substitution_box(substitution_box);
+        self.reset_feedback();
+    }
+
     /// Sets the Initialization Vector (IV)
     ///
     /// # Arguments
@@ -53,7 +116,7 @@ impl Stream {
     }
 
     #[inline]
-    fn prepare_vector_ctr(&self) -> u64 {
+    pub (crate) fn prepare_vector_ctr(&self) -> u64 {
         self.ensure_iv_not_empty();
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CTR Mode: Page 36, Section A.2.2, uses MSB(32) part of IV extended to 64bit with Initial Nonce
@@ -62,14 +125,14 @@ impl Stream {
     }
 
     #[inline]
-    fn ensure_iv_not_empty(&self) {
+    pub (crate) fn ensure_iv_not_empty(&self) {
         if self.context.iv.is_empty() {
             panic!("Initialization vector is empty!");
         }
     }
 
     // check and update cipher context
-    fn update_context(&mut self, cipher_operation: &CipherOperation, cipher_mode: &CipherMode) {
+    pub (crate) fn update_context(&mut self, cipher_operation: &CipherOperation, cipher_mode: &CipherMode) {
         if self.context.operation.as_ref() != Some(&cipher_operation)
             || self.context.mode.as_ref() != Some(&cipher_mode)
         {
@@ -81,7 +144,7 @@ impl Stream {
 
     /// Resets the context of stream ciphering
     pub fn reset_context(&mut self) {
-        self.context = Context::new();
+        self.context = MagmaStreamContext::new();
     }
 
 
@@ -90,36 +153,50 @@ impl Stream {
         self.context.feedback = Feedback::new();
     }
 
-    /// Returns resulting vector as `Vec<u8>`
+    /// Returns encrypted vector as `Vec<u8>`
     ///
     /// # Arguments
     ///
     /// * `buf` - a slice of `&[u8]` input data
-    /// * `cipher_operation` - reference to `CipherOperation`
     /// * `cipher_mode` - reference to `CipherMode`
-    pub fn cipher(
+    pub fn encrypt(
         &mut self,
         buf: &[u8],
-        cipher_operation: &CipherOperation,
         cipher_mode: &CipherMode,
     ) -> Vec<u8> {
 
         // check and update feedback state
-        self.update_context(cipher_operation, cipher_mode);
+        self.update_context(&CipherOperation::Encrypt, cipher_mode);
 
-        match cipher_operation {
-            CipherOperation::Encrypt => match cipher_mode {
-                CipherMode::ECB => ecb::encrypt(self.core, buf),
-                CipherMode::CTR => ctr::encrypt(self, buf),
-                CipherMode::CTR_ACPKM => ctr_acpkm::encrypt(self, buf),
-                CipherMode::OFB => ofb::encrypt(self, buf),
-                CipherMode::CBC => cbc::encrypt(self, buf),
-                CipherMode::CFB => cfb::encrypt(self, buf),
-                CipherMode::MAC => {
-                    panic!("CipherMode::MAC can not be used in encrypting operation!")
-                }
-            },
-            CipherOperation::Decrypt => match cipher_mode {
+        match cipher_mode {
+            CipherMode::ECB => ecb::encrypt(self, buf),
+            CipherMode::CTR => ctr::encrypt(self, buf),
+            CipherMode::CTR_ACPKM => ctr_acpkm::encrypt(self, buf),
+            CipherMode::OFB => ofb::encrypt(self, buf),
+            CipherMode::CBC => cbc::encrypt(self, buf),
+            CipherMode::CFB => cfb::encrypt(self, buf),
+            CipherMode::MAC => {
+                panic!("CipherMode::MAC can not be used in encrypting operation!")
+            }
+        }
+    }
+
+    /// Returns a decrypted vector as `Vec<u8>`
+    ///
+    /// # Arguments
+    ///
+    /// * `buf` - a slice of `&[u8]` input data
+    /// * `cipher_mode` - reference to `CipherMode`
+    pub fn decrypt(
+        &mut self,
+        buf: &[u8],
+        cipher_mode: &CipherMode,
+    ) -> Vec<u8> {
+
+        // check and update feedback state
+        self.update_context(&CipherOperation::Decrypt, cipher_mode);
+
+        match cipher_mode {
                 CipherMode::ECB => ecb::decrypt(self, buf),
                 CipherMode::CTR => ctr::decrypt(self, buf),
                 CipherMode::CTR_ACPKM => ctr_acpkm::decrypt(self, buf),
@@ -129,14 +206,8 @@ impl Stream {
                 CipherMode::MAC => {
                     panic!("CipherMode::MAC can not be used in decrypting operation!")
                 }
-            },
-            CipherOperation::MessageAuthentication => match cipher_mode {
-                CipherMode::MAC => mac::calculate(self, buf).to_be_bytes().to_vec(),
-                _ => panic!("Only CipherMode::MAC can be used in MessageAuthentication!"),
-            },
         }
     }
-
 }
 
 #[cfg(test)]
@@ -145,13 +216,13 @@ mod tests {
 
     #[test]
     fn default_initialization() {
-        let stream = Stream::new();
+        let stream = MagmaStream::new();
         assert_eq!(stream.context.iv, IV_GOST_R3413_2015);
     }
 
     #[test]
     fn set_initialization_vector() {
-        let mut stream = Stream::new();
+        let mut stream = MagmaStream::new();
         let initialization_vector = vec![0x11223344_u64];
         stream.set_iv(&initialization_vector);
         assert_eq!(stream.context.iv, initialization_vector);
@@ -166,8 +237,8 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
-        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::ECB);
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
+        let encrypted = magma_stream.encrypt(&source,  &CipherMode::ECB);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -177,7 +248,7 @@ mod tests {
         expected.extend_from_slice(&r3413_2015::CIPHERTEXT4_ECB.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::ECB);
+        let decrypted = magma_stream.decrypt(&encrypted, &CipherMode::ECB);
         assert_eq!(decrypted, source);
     }
 
@@ -194,8 +265,8 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
-        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CTR);
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
+        let encrypted = magma_stream.encrypt(&source,  &CipherMode::CTR);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -205,7 +276,7 @@ mod tests {
         expected.extend_from_slice(&r3413_2015::CIPHERTEXT4_CTR.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CTR);
+        let decrypted = magma_stream.decrypt(&encrypted,  &CipherMode::CTR);
         assert_eq!(decrypted, source);
     }
 
@@ -218,20 +289,18 @@ mod tests {
 
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
-        let mut magma = Magma::with_key(ctr_acpkm::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaStream::with_key(ctr_acpkm::CIPHER_KEY.clone());
 
-        let encrypted = magma.cipher(
+        let encrypted = magma_stream.encrypt(
             &ctr_acpkm::PLAINTEXT,
-            &CipherOperation::Encrypt,
             &CipherMode::CTR_ACPKM,
         );
         assert!(!encrypted.is_empty());
 
         assert_eq!(encrypted, ctr_acpkm::CIPHERTEXT);
 
-        let decrypted = magma.cipher(
+        let decrypted = magma_stream.decrypt(
             &encrypted,
-            &CipherOperation::Decrypt,
             &CipherMode::CTR_ACPKM,
         );
         assert_eq!(decrypted, ctr_acpkm::PLAINTEXT);
@@ -250,13 +319,13 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
-        magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
+        magma_stream.set_iv(&IV_GOST_R3413_2015[..2]);
 
-        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::OFB);
+        let encrypted = magma_stream.encrypt(&source, &CipherMode::OFB);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -266,7 +335,7 @@ mod tests {
         expected.extend_from_slice(&r3413_2015::CIPHERTEXT4_OFB.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::OFB);
+        let decrypted = magma_stream.decrypt(&encrypted, &CipherMode::OFB);
         assert_eq!(decrypted, source);
     }
 
@@ -282,8 +351,8 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
-        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CBC);
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
+        let encrypted = magma_stream.encrypt(&source, &CipherMode::CBC);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -293,7 +362,7 @@ mod tests {
         expected.extend_from_slice(&r3413_2015::CIPHERTEXT4_CBC.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CBC);
+        let decrypted = magma_stream.decrypt(&encrypted, &CipherMode::CBC);
         assert_eq!(decrypted, source);
     }
 
@@ -309,13 +378,13 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
-        magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
+        magma_stream.set_iv(&IV_GOST_R3413_2015[..2]);
 
-        let encrypted = magma.cipher(&source, &CipherOperation::Encrypt, &CipherMode::CFB);
+        let encrypted = magma_stream.encrypt(&source, &CipherMode::CFB);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -325,38 +394,7 @@ mod tests {
         expected.extend_from_slice(&r3413_2015::CIPHERTEXT4_CFB.to_be_bytes());
         assert_eq!(encrypted, expected);
 
-        let decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &CipherMode::CFB);
+        let decrypted = magma_stream.decrypt(&encrypted, &CipherMode::CFB);
         assert_eq!(decrypted, source);
-    }
-
-    #[test]
-    fn cipher_mac_gost_r_34_13_2015() {
-        // Test vectors GOST R 34.13-2015
-        // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
-        // Page 40, Section A.2.6
-
-        use crypto_vectors::gost::r3413_2015;
-        let mut magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
-
-        let mut src_buf = Vec::<u8>::new();
-        src_buf.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());
-        src_buf.extend_from_slice(&r3413_2015::PLAINTEXT2.to_be_bytes());
-        src_buf.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
-        src_buf.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
-
-        let mac_vec = magma.cipher(
-            &src_buf,
-            &CipherOperation::MessageAuthentication,
-            &CipherMode::MAC,
-        );
-        assert_eq!(mac_vec.len(), 4);
-
-        let mut array_u8 = [0u8; 4];
-        mac_vec
-            .iter()
-            .enumerate()
-            .for_each(|t| array_u8[t.0] = *t.1);
-        let mac = u32::from_be_bytes(array_u8);
-        assert_eq!(mac, r3413_2015::MAC);
     }
 }

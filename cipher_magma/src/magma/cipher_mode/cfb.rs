@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use crate::{magma::Magma, CipherOperation, CipherMode};
+use crate::{MagmaStream, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -11,14 +11,14 @@ use crate::{magma::Magma, CipherOperation, CipherMode};
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 23, Section 5.5.1
-pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+pub fn encrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
-    core.ensure_iv_not_empty();
+    magma_stream.ensure_iv_not_empty();
 
-    core.update_context(&CipherOperation::Encrypt, &CipherMode::CFB);
-    let mut register_r = match &core.context.feedback.vector {
+    magma_stream.update_context(&CipherOperation::Encrypt, &CipherMode::CFB);
+    let mut register_r = match &magma_stream.context.feedback.vector {
         Some(vector) => vector.clone(),
-        None => VecDeque::from(core.iv.clone())
+        None => VecDeque::from(magma_stream.context.iv.clone())
     };
 
     let mut result = Vec::<u8>::with_capacity(buf.len());
@@ -28,7 +28,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
         let block = u64::from_be_bytes(array_u8);
 
         let register_n= register_r.pop_front().unwrap();
-        let output = core.encrypt(register_n) ^ block;
+        let output = magma_stream.magma.encrypt(register_n) ^ block;
 
         register_r.push_back(output);
 
@@ -36,7 +36,7 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
     }
 
     // update the feedback state
-    core.context.feedback.vector = Some(register_r);
+    magma_stream.context.feedback.vector = Some(register_r);
 
     result
 }
@@ -48,14 +48,14 @@ pub fn encrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 24, Section 5.5.2
-pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
+pub fn decrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
-    core.ensure_iv_not_empty();
+    magma_stream.ensure_iv_not_empty();
 
-    core.update_context(&CipherOperation::Decrypt, &CipherMode::CFB);
-    let mut register_r = match &core.context.feedback.vector {
+    magma_stream.update_context(&CipherOperation::Decrypt, &CipherMode::CFB);
+    let mut register_r = match &magma_stream.context.feedback.vector {
         Some(vector) => vector.clone(),
-        None => VecDeque::from(core.iv.clone())
+        None => VecDeque::from(magma_stream.context.iv.clone())
     };
 
     let mut result = Vec::<u8>::with_capacity(buf.len());
@@ -65,7 +65,7 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
         let block = u64::from_be_bytes(array_u8);
 
         let register_n= register_r.pop_front().unwrap();
-        let output = core.encrypt(register_n) ^ block;
+        let output = magma_stream.magma.encrypt(register_n) ^ block;
 
         register_r.push_back(block);
 
@@ -73,7 +73,7 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
     }
 
     // update the feedback state
-    core.context.feedback.vector = Some(register_r);
+    magma_stream.context.feedback.vector = Some(register_r);
 
     result
 }
@@ -82,6 +82,8 @@ pub fn decrypt(core: &mut Magma, buf: &[u8]) -> Vec<u8> {
 mod tests {
 
     use super::*;
+    use crypto_vectors::gost::r3413_2015;
+    use crate::magma::constants::*;
 
     #[test]
     fn cfb_steps_gost_r_34_13_2015() {
@@ -89,20 +91,19 @@ mod tests {
         // https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf
         // Page 39, Section A.2.5
 
-        use crypto_vectors::gost::r3413_2015;
-
         // s = n = 64, m = 2n = 128
         // IV = 1234567890abcdef234567890abcdef1
         let iv = 0x1234567890abcdef234567890abcdef1_u128;
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
-        let mut r = [Magma::IV_GOST_R3413_2015[0], Magma::IV_GOST_R3413_2015[1]];
+        let mut r = [IV_GOST_R3413_2015[0], IV_GOST_R3413_2015[1]];
         let mut v1 = Vec::from(r[0].to_be_bytes());
         v1.extend_from_slice(&r[1].to_be_bytes());
         assert_eq!(iv.to_be_bytes(), v1.as_slice());
 
-        let magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
+        use crate::magma::Magma;
+        let magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
 
         let p1 = r3413_2015::PLAINTEXT1;
         let i1 = r[0];
@@ -160,13 +161,13 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
-        magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
+        magma_stream.set_iv(&IV_GOST_R3413_2015[..2]);
 
-        let encrypted = encrypt(&mut magma, &source);
+        let encrypted = encrypt(&mut magma_stream, &source);
         assert!(!encrypted.is_empty());
 
         let mut expected = Vec::<u8>::new();
@@ -191,11 +192,11 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = Magma::with_key_u32(&r3413_2015::CIPHER_KEY);
+        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
-        magma.set_iv(&Magma::IV_GOST_R3413_2015[..2]);
+        magma_stream.set_iv(&IV_GOST_R3413_2015[..2]);
 
         let mut encrypted = Vec::<u8>::new();
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT1_CFB.to_be_bytes());
@@ -203,7 +204,7 @@ mod tests {
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT3_CFB.to_be_bytes());
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT4_CFB.to_be_bytes());
 
-        let decrypted = decrypt(&mut magma, &encrypted);
+        let decrypted = decrypt(&mut magma_stream, &encrypted);
         assert_eq!(decrypted, source);
 
     }

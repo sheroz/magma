@@ -1,12 +1,12 @@
 /// Text encryption sample
 pub fn sample_encrypt_text() {
-    use cipher_magma::{CipherMode, CipherOperation, Magma};
+    use cipher_magma::{CipherMode, MagmaStream};
 
     let cipher_mode = CipherMode::CFB;
 
     let key = [0xab; 32];
     println!("Key:\n{:x?}\n", key);
-    let mut magma = Magma::with_key(key);
+    let mut magma_stream = MagmaStream::with_key(key);
 
     let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -16,10 +16,10 @@ pub fn sample_encrypt_text() {
 
     println!("Source:\n{}\n", String::from_utf8(source.to_vec()).unwrap());
 
-    let encrypted = magma.cipher(source, &CipherOperation::Encrypt, &cipher_mode);
+    let encrypted = magma_stream.encrypt(source, &cipher_mode);
     println!("Encrypted:\n{:02x?}\n", encrypted);
 
-    let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
+    let mut decrypted = magma_stream.decrypt(&encrypted, &cipher_mode);
 
     if cipher_mode.has_padding() {
         // remove padding bytes

@@ -1,12 +1,12 @@
 /// File encryption sample
 pub fn sample_encrypt_file() {
-    use cipher_magma::{CipherMode, CipherOperation, Magma};
+    use cipher_magma::{CipherMode, MagmaStream};
     use std::io::{Read, Seek, Write};
 
     let cipher_mode = CipherMode::CBC;
 
     let key = [0xab; 32];
-    let mut magma = Magma::with_key(key);
+    let mut magma_stream = MagmaStream::with_key(key);
 
     // opening file
     let source_filename = "README.md";
@@ -43,7 +43,7 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let ciphertext = magma.cipher(&buf[0..read_count], &CipherOperation::Encrypt, &cipher_mode);
+        let ciphertext = magma_stream.encrypt(&buf[0..read_count], &cipher_mode);
 
         encrypted_file
             .write_all(&ciphertext)
@@ -79,7 +79,7 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let plaintext = magma.cipher(&buf[0..read_count], &CipherOperation::Decrypt, &cipher_mode);
+        let plaintext = magma_stream.decrypt(&buf[0..read_count], &cipher_mode);
 
         decrypted_file
             .write_all(&plaintext)

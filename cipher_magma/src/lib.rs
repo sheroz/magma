@@ -16,14 +16,11 @@
 
 pub mod magma;
 
-// re-export the Magma
+// re-export the core
 pub use magma::Magma;
 
-// re-export the core operations
-pub use magma::core::Core;
-
 // re-export the stream operations
-pub use magma::stream::Stream;
+pub use magma::magma_stream::MagmaStream;
 
 // re-export constants
 pub use magma::constants::*;
