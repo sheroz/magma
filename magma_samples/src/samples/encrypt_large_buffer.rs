@@ -1,12 +1,12 @@
 /// Sample of encryption of large data in chunks
 pub fn sample_encrypt_large_buffer() {
-    use cipher_magma::{CipherMode, MagmaStream};
+    use cipher_magma::{CipherMode, MagmaMode};
 
-    let cipher_mode = CipherMode::CFB;
     const BUF_SIZE: usize = 128;
+    let cipher_mode = CipherMode::CFB;
 
     let key = [0xab;32];
-    let mut magma_stream = MagmaStream::with_key(key);
+    let mut magma_mode = MagmaMode::with_key_mode(key, cipher_mode.clone());
 
     let txt = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -24,7 +24,7 @@ pub fn sample_encrypt_large_buffer() {
     let mut encrypted = Vec::<u8>::with_capacity(source.len());
     let source_chunks = source.chunks(BUF_SIZE);
     for chunk in source_chunks {
-        let mut ciphertext = magma_stream.encrypt(&chunk, &cipher_mode);
+        let mut ciphertext = magma_mode.encrypt(&chunk);
         encrypted.append(&mut ciphertext);
     }
     println!("Encrypted len:{}", encrypted.len());
@@ -32,7 +32,7 @@ pub fn sample_encrypt_large_buffer() {
     let mut decrypted = Vec::<u8>::with_capacity(encrypted.len());
     let encrypted_chunks = encrypted.chunks(BUF_SIZE);
     for chunk in encrypted_chunks {
-        let mut plaintext = magma_stream.decrypt(&chunk, &cipher_mode);
+        let mut plaintext = magma_mode.decrypt(&chunk);
         decrypted.append(&mut plaintext);
     }
     println!("Decrypted len:{}", encrypted.len());

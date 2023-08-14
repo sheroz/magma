@@ -14,21 +14,15 @@
 //! * **CFB** - Cipher Feedback Mode
 //! * **MAC** - Message Authentication Code Generation Mode
 
-pub mod magma_stream;
-pub mod constants;
-pub mod cipher_key;
-pub mod cipher_mode;
-pub mod cipher_operation;
-pub mod utils;
-
-use crate::*;
-use crate::magma::cipher_key::CipherKey;
+use crate::magma_core::*;
+use crate::magma_core::constants::*;
+use crate::magma_core::cipher_key::*;
 
 /// Block Cipher "Magma"
 pub struct Magma {
-    key: [u32; 8],
-    round_keys: [u32; 32],
-    substitution_box: [u8; 128],
+    pub (crate) key: [u32; 8],
+    pub (crate) round_keys: [u32; 32],
+    pub (crate) substitution_box: [u8; 128],
 }
 
 impl Magma {
@@ -102,7 +96,7 @@ impl Magma {
     /// # Arguments
     ///
     /// * `key` - A reference to `[u32;8]` array
-    pub(super) fn set_key_u32(&mut self, key: &[u32; 8]) {
+    pub(crate) fn set_key_u32(&mut self, key: &[u32; 8]) {
         self.key.clone_from(key);
         self.prepare_round_keys();
     }
@@ -112,7 +106,7 @@ impl Magma {
     /// # Arguments
     ///
     /// * `bytes` - A `&[u8]` slice with 32 byte elements
-    pub(super) fn set_key_u8(&mut self, bytes: &[u8]) {
+    pub(crate) fn set_key_u8(&mut self, bytes: &[u8]) {
         self.set_key_u32(&Self::key_from_u8(bytes));
     }
 
@@ -145,7 +139,7 @@ impl Magma {
     /// # Arguments
     ///
     /// * `substitution_box` - A reference to `[u8;128]` array
-    pub (super) fn set_substitution_box(&mut self, substitution_box: &[u8; 128]) {
+    pub (crate) fn set_substitution_box(&mut self, substitution_box: &[u8; 128]) {
         self.substitution_box.copy_from_slice(substitution_box);
     }
 

@@ -1,7 +1,7 @@
 //! Implements Counter Encryption (CTR_ACPKM) mode
 
-use crate::{MagmaStream, CipherOperation, CipherMode};
-use crate::magma::constants::*;
+use crate::{MagmaMode, CipherOperation, CipherMode};
+use crate::magma_core::constants::*;
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -10,7 +10,7 @@ use crate::magma::constants::*;
 /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
-pub fn encrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
+pub fn encrypt(magma_stream: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
     magma_stream.update_context(&CipherOperation::Encrypt, &CipherMode::CTR_ACPKM);
 
     cipher_ctr_acpkm(magma_stream, buf)
@@ -23,7 +23,7 @@ pub fn encrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
-pub fn decrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
+pub fn decrypt(magma_stream: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
     magma_stream.update_context(&CipherOperation::Decrypt, &CipherMode::CTR_ACPKM);
 
     cipher_ctr_acpkm(magma_stream, buf)
@@ -36,7 +36,7 @@ pub fn decrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 /// [RFC8645](https://www.rfc-editor.org/rfc/rfc8645.html#section-6.2.2)
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
-fn cipher_ctr_acpkm(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
+fn cipher_ctr_acpkm(magma_stream: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
 
     let iv_ctr = magma_stream.prepare_vector_ctr();
     let mut result = Vec::<u8>::with_capacity(buf.len());
@@ -65,7 +65,8 @@ fn cipher_ctr_acpkm(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
         section_bits_processed += 64;
         if section_bits_processed >= CTR_ACPKM_SECTION_SIZE_N {
             let state = magma_stream.context.clone();
-            let section_key = magma_stream.encrypt(&CTR_ACPKM_D, &CipherMode::ECB);
+            magma_stream.set_mode(CipherMode::ECB);
+            let section_key = magma_stream.encrypt(&CTR_ACPKM_D);
             magma_stream.magma.set_key_u8(&section_key);
             magma_stream.context = state;
             section_bits_processed = 0;
@@ -95,7 +96,7 @@ mod tests {
 
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
-        let mut magma_stream = MagmaStream::with_key(ctr_acpkm::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaMode::with_key(ctr_acpkm::CIPHER_KEY.clone());
 
         let encrypted = encrypt(&mut magma_stream, &ctr_acpkm::PLAINTEXT);
         assert!(!encrypted.is_empty());
@@ -112,7 +113,7 @@ mod tests {
         
         use crypto_vectors::gost::r1323565_1_017_2018::ctr_acpkm;
 
-        let mut magma_stream = MagmaStream::with_key(ctr_acpkm::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaMode::with_key(ctr_acpkm::CIPHER_KEY.clone());
         let decrypted = decrypt(&mut magma_stream, &ctr_acpkm::CIPHERTEXT);
         assert_eq!(decrypted, ctr_acpkm::PLAINTEXT);
     }

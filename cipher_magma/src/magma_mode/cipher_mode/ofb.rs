@@ -1,7 +1,7 @@
 //! Implements Output Feedback (OFB) mode
 
 use std::collections::VecDeque;
-use crate::{MagmaStream, CipherOperation, CipherMode};
+use crate::{MagmaMode, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -10,7 +10,7 @@ use crate::{MagmaStream, CipherOperation, CipherMode};
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 16, Section 5.3
-pub fn encrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
+pub fn encrypt(magma_stream: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
     magma_stream.update_context(&CipherOperation::Encrypt, &CipherMode::OFB);
     cipher_ofb(magma_stream, buf)
 }
@@ -22,7 +22,7 @@ pub fn encrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 16, Section 5.3
-pub fn decrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
+pub fn decrypt(magma_stream: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
     magma_stream.update_context(&CipherOperation::Decrypt, &CipherMode::OFB);
     cipher_ofb(magma_stream, buf)
 }
@@ -34,7 +34,7 @@ pub fn decrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 16, Section 5.3
-fn cipher_ofb(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
+fn cipher_ofb(magma_stream: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
 
     magma_stream.ensure_iv_not_empty();
 
@@ -70,7 +70,7 @@ mod tests {
 
     use super::*;
     use crypto_vectors::gost::r3413_2015;
-    use crate::magma::constants::*;
+    use crate::magma_core::constants::*;
 
     #[test]
     fn ofb_steps_gost_r_34_13_2015() {
@@ -89,7 +89,7 @@ mod tests {
         v1.extend_from_slice(&r[1].to_be_bytes());
         assert_eq!(iv.to_be_bytes(), v1.as_slice());
 
-        use crate::magma::Magma;
+        use crate::Magma;
         let magma = Magma::with_key(r3413_2015::CIPHER_KEY.clone());
 
         let p1 = r3413_2015::PLAINTEXT1;
@@ -146,7 +146,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaMode::with_key(r3413_2015::CIPHER_KEY.clone());
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
@@ -175,7 +175,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma_stream = MagmaStream::with_key(r3413_2015::CIPHER_KEY.clone());
+        let mut magma_stream = MagmaMode::with_key(r3413_2015::CIPHER_KEY.clone());
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // OFB Mode: Page 37, Section A.2.3, uses MSB(128) part of IV
