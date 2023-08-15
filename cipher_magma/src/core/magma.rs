@@ -14,11 +14,11 @@
 //! * **CFB** - Cipher Feedback Mode
 //! * **MAC** - Message Authentication Code Generation Mode
 
-use crate::magma_core::*;
-use crate::magma_core::constants::*;
-use crate::magma_core::cipher_key::*;
+use crate::core::*;
+use crate::core::constants::*;
+use crate::core::cipher_key::*;
 
-/// Block Cipher "Magma"
+/// The core Magma block-cipher 
 pub struct Magma {
     pub (crate) key: [u32; 8],
     pub (crate) round_keys: [u32; 32],

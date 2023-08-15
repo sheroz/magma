@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use crate::{MagmaMode, CipherOperation, CipherMode};
+use crate::{MagmaStream, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -11,7 +11,7 @@ use crate::{MagmaMode, CipherOperation, CipherMode};
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 23, Section 5.5.1
-pub fn encrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
+pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
     magma.ensure_iv_not_empty();
 
@@ -28,7 +28,7 @@ pub fn encrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
         let block = u64::from_be_bytes(array_u8);
 
         let register_n= register_r.pop_front().unwrap();
-        let output = magma.magma.encrypt(register_n) ^ block;
+        let output = magma.core.encrypt(register_n) ^ block;
 
         register_r.push_back(output);
 
@@ -48,7 +48,7 @@ pub fn encrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 24, Section 5.5.2
-pub fn decrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
+pub fn decrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
     magma.ensure_iv_not_empty();
 
@@ -65,7 +65,7 @@ pub fn decrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
         let block = u64::from_be_bytes(array_u8);
 
         let register_n= register_r.pop_front().unwrap();
-        let output = magma.magma.encrypt(register_n) ^ block;
+        let output = magma.core.encrypt(register_n) ^ block;
 
         register_r.push_back(block);
 
@@ -83,7 +83,7 @@ mod tests {
 
     use super::*;
     use crypto_vectors::gost::r3413_2015;
-    use crate::magma_core::constants::*;
+    use crate::core::constants::*;
 
     #[test]
     fn cfb_steps_gost_r_34_13_2015() {
@@ -161,7 +161,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CFB);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CFB);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV
@@ -192,7 +192,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CFB);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CFB);
 
         // [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
         // CFB Mode: Page 39, Section A.2.5, uses MSB(128) part of IV

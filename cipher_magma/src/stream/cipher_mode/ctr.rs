@@ -1,6 +1,6 @@
 //! Implements Counter Encryption (CTR) mode
 
-use crate::{MagmaMode, CipherOperation, CipherMode};
+use crate::{MagmaStream, CipherOperation, CipherMode};
 
 /// Returns encrypted result as `Vec<u8>`
 /// 
@@ -9,7 +9,7 @@ use crate::{MagmaMode, CipherOperation, CipherMode};
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 15, Section 5.2.1
-pub fn encrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
+pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
     magma.update_context(&CipherOperation::Encrypt, &CipherMode::CTR);
     cipher_ctr(magma, buf)
 }
@@ -21,7 +21,7 @@ pub fn encrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 15, Section 5.2.2
-pub fn decrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
+pub fn decrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
     magma.update_context(&CipherOperation::Decrypt, &CipherMode::CTR);
     cipher_ctr(magma, buf)
 }
@@ -33,7 +33,7 @@ pub fn decrypt(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 14, Section 5.2
-fn cipher_ctr(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
+fn cipher_ctr(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
     let iv_ctr = magma.prepare_vector_ctr();
     let mut counter = match magma.context.feedback.block {
@@ -51,7 +51,7 @@ fn cipher_ctr(magma: &mut MagmaMode, buf: &[u8]) -> Vec<u8> {
         let ctr = iv_ctr.wrapping_add(counter);
         counter += 1;
 
-        let gamma = magma.magma.encrypt(ctr);
+        let gamma = magma.core.encrypt(ctr);
         let output =  gamma ^ block;
 
         result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
@@ -127,7 +127,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CTR);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CTR);
         let encrypted = encrypt(&mut magma, &source);
         assert!(!encrypted.is_empty());
 
@@ -147,7 +147,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CTR);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::CTR);
 
         let mut encrypted = Vec::<u8>::new();
         encrypted.extend_from_slice(&r3413_2015::CIPHERTEXT1_CTR.to_be_bytes());

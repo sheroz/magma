@@ -19,7 +19,7 @@ pub mod cfb;
 pub mod mac;
 
 /// Cipher Mode
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode
     ECB, 

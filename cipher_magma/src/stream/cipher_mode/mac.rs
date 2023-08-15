@@ -1,7 +1,7 @@
 //! Implements Message Authentication Code (MAC)
 
-use crate::{MagmaMode, CipherOperation, CipherMode};
-use crate::magma_core::utils;
+use crate::{MagmaStream, CipherOperation, CipherMode};
+use crate::core::utils;
 
 /// Returns the Message Authentication Code (MAC)
 ///
@@ -12,7 +12,7 @@ use crate::magma_core::utils;
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 ///
 /// Page 26, Section 5.6
-pub fn calculate(magma: &mut MagmaMode, msg_buf: &[u8]) -> u32 {
+pub fn calculate(magma: &mut MagmaStream, msg_buf: &[u8]) -> u32 {
     magma.reset_feedback();
     magma.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
 
@@ -29,7 +29,7 @@ pub fn calculate(magma: &mut MagmaMode, msg_buf: &[u8]) -> u32 {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 ///
 /// Page 26, Section 5.6
-pub fn update(magma: &mut MagmaMode, msg_buf: &[u8]) {
+pub fn update(magma: &mut MagmaStream, msg_buf: &[u8]) {
     magma.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
 
     let mut feedback_chained = magma.context.feedback.block.is_some();
@@ -60,7 +60,7 @@ pub fn update(magma: &mut MagmaMode, msg_buf: &[u8]) {
 
         feedback = block_in
             ^ if feedback_chained {
-                magma.magma.encrypt(feedback)
+                magma.core.encrypt(feedback)
             } else {
                 feedback
             };
@@ -80,7 +80,7 @@ pub fn update(magma: &mut MagmaMode, msg_buf: &[u8]) {
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 ///
 /// Page 26, Section 5.6
-pub fn finalize(magma: &mut MagmaMode) -> u32 {
+pub fn finalize(magma: &mut MagmaStream) -> u32 {
     magma.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
 
     let (k1, k2) = generate_cmac_subkeys(magma);
@@ -91,7 +91,7 @@ pub fn finalize(magma: &mut MagmaMode) -> u32 {
         None => panic!("Context not found, please use update() before finalizing."),
     };
 
-    let final_block = magma.magma.encrypt(finalizer);
+    let final_block = magma.core.encrypt(finalizer);
     let (mac, _) = utils::u64_split(final_block);
 
     magma.reset_context();
@@ -103,8 +103,8 @@ pub fn finalize(magma: &mut MagmaMode) -> u32 {
 /// Key generation algorithm is based on:
 ///
 /// [OMAC1 a.k.a CMAC](https://en.wikipedia.org/wiki/One-key_MAC)
-fn generate_cmac_subkeys(magma: &mut MagmaMode) -> (u64, u64) {
-    let r = magma.magma.encrypt(0x0_u64);
+fn generate_cmac_subkeys(magma: &mut MagmaStream) -> (u64, u64) {
+    let r = magma.core.encrypt(0x0_u64);
 
     let b64 = 0x1b_u64;
     let mcb_u64 = 0x80000000_00000000_u64;
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn cmac_subkeys_gost_r_34_13_2015() {
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
         let (k1, k2) = generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
         assert_eq!(k2, 0xbe8b366684a42848_u64);
@@ -145,7 +145,7 @@ mod tests {
         // Page 40, Section A.2.6
 
         use crypto_vectors::gost::r3413_2015;
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
 
         let (k1, k2) = generate_cmac_subkeys(&mut magma);
         assert_eq!(k1, 0x5f459b3342521424_u64);
@@ -154,22 +154,22 @@ mod tests {
         let k_n = k1;
 
         let i1 = r3413_2015::PLAINTEXT1;
-        let o1 = magma.magma.encrypt(i1);
+        let o1 = magma.core.encrypt(i1);
         assert_eq!(o1, 0x2b073f0494f372a0_u64);
 
         let i2 = o1 ^ r3413_2015::PLAINTEXT2;
         assert_eq!(i2, 0xf053f8006cebef80_u64);
-        let o2 = magma.magma.encrypt(i2);
+        let o2 = magma.core.encrypt(i2);
         assert_eq!(o2, 0xc89ed814fd5e18e9_u64);
 
         let i3 = o2 ^ r3413_2015::PLAINTEXT3;
         assert_eq!(i3, 0x8206233a9af61aa5_u64);
-        let o3 = magma.magma.encrypt(i3);
+        let o3 = magma.core.encrypt(i3);
         assert_eq!(o3, 0xf739b18d34289b00_u64);
 
         let i4 = o3 ^ r3413_2015::PLAINTEXT4 ^ k_n;
         assert_eq!(i4, 0x216e6a2561cff165_u64);
-        let o4 = magma.magma.encrypt(i4);
+        let o4 = magma.core.encrypt(i4);
         assert_eq!(o4, 0x154e72102030c5bb_u64);
 
         let (mac, _) = utils::u64_split(o4);
@@ -190,7 +190,7 @@ mod tests {
         source.extend_from_slice(&r3413_2015::PLAINTEXT3.to_be_bytes());
         source.extend_from_slice(&r3413_2015::PLAINTEXT4.to_be_bytes());
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
 
         update(&mut magma, &source);
         let mac = finalize(&mut magma);
@@ -205,7 +205,7 @@ mod tests {
 
         use crypto_vectors::gost::r3413_2015;
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
 
         update(&mut magma, &r3413_2015::PLAINTEXT1.to_be_bytes());
         update(&mut magma, &r3413_2015::PLAINTEXT2.to_be_bytes());
@@ -224,7 +224,7 @@ mod tests {
 
         use crypto_vectors::gost::r3413_2015;
 
-        let mut magma = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
+        let mut magma = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
 
         let mut source = Vec::<u8>::new();
         source.extend_from_slice(&r3413_2015::PLAINTEXT1.to_be_bytes());
@@ -240,7 +240,7 @@ mod tests {
     #[should_panic]
     fn mac_finilize_no_context() {
         use crypto_vectors::gost::r3413_2015;
-        let mut magma_stream = MagmaMode::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
+        let mut magma_stream = MagmaStream::new(r3413_2015::CIPHER_KEY.clone(), CipherMode::MAC);
         finalize(&mut magma_stream);
     }
 }

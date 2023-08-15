@@ -1,10 +1,10 @@
 /// Text encryption sample
 pub fn sample_encrypt_text() {
-    use cipher_magma::{CipherMode, MagmaMode};
+    use cipher_magma::{CipherMode, MagmaStream};
 
     let key = [0xab; 32];
     println!("Key:\n{:x?}\n", key);
-    let mut magma = MagmaMode::new(key, CipherMode::CFB);
+    let mut magma = MagmaStream::new(key, CipherMode::CFB);
 
     let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
