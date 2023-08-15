@@ -1,28 +1,28 @@
 /// File encryption sample
 pub fn sample_encrypt_file() {
-    use cipher_magma::{CipherMode, CipherOperation, Magma};
+    use cipher_magma::{CipherMode, MagmaStream};
+    use std::env;
+    use std::fs::File;
     use std::io::{Read, Seek, Write};
 
-    let cipher_mode = CipherMode::CBC;
-
     let key = [0xab; 32];
-    let mut magma = Magma::with_key(key);
+    let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
-    // opening file
+    // opening source file
     let source_filename = "README.md";
     println!("Opening source file: {}", source_filename);
 
-    let mut source_file = std::fs::File::open(source_filename).expect("Could not open file.");
+    let mut source_file = File::open(source_filename).expect("Could not open file.");
     let source_len = source_file.metadata().unwrap().len();
 
-    let temp_dir = std::env::temp_dir();
+    let temp_dir = env::temp_dir();
 
     // creating file for encrypted data
     let encrypted_filename = format!("{}.encrypted", source_filename);
     let encrypted_filepath = temp_dir.join(encrypted_filename);
     println!("Creating encrypted file: {:?}", encrypted_filepath);
 
-    let mut encrypted_file = std::fs::File::options()
+    let mut encrypted_file = File::options()
         .write(true)
         .read(true)
         .create(true)
@@ -43,12 +43,13 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let ciphertext = magma.cipher(&buf[0..read_count], &CipherOperation::Encrypt, &cipher_mode);
+        let ciphertext = magma.encrypt(&buf[0..read_count]);
 
         encrypted_file
             .write_all(&ciphertext)
             .expect("Could not write into encrypted file");
     }
+
     encrypted_file
         .flush()
         .expect("Could not flush the encrypted file");
@@ -58,10 +59,10 @@ pub fn sample_encrypt_file() {
     let decrypted_filename = format!("{}.decrypted", source_filename);
     let decrypted_filepath = temp_dir.join(decrypted_filename);
 
-    println!("Creating decrypted file: {:?}", decrypted_filepath);
+    println!("Creating file for decrypted data: {:?}", decrypted_filepath);
 
     let mut decrypted_file =
-        std::fs::File::create(decrypted_filepath).expect("Could not create decrypted file.");
+        File::create(decrypted_filepath).expect("Could not create decrypted file.");
 
     println!("Decrypting ...");
 
@@ -79,17 +80,18 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let plaintext = magma.cipher(&buf[0..read_count], &CipherOperation::Decrypt, &cipher_mode);
+        let plaintext = magma.decrypt(&buf[0..read_count]);
 
         decrypted_file
             .write_all(&plaintext)
             .expect("Could not write into decrypted file");
     }
+
     decrypted_file
         .flush()
         .expect("Could not flush the decrypted file");
 
-    if cipher_mode.has_padding() {
+    if magma.get_mode().has_padding() {
         // remove padding bytes
         decrypted_file
             .set_len(source_len)

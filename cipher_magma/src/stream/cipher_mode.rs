@@ -19,7 +19,7 @@ pub mod cfb;
 pub mod mac;
 
 /// Cipher Mode
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum CipherMode {
     /// Electronic Codebook (ECB) Mode
     ECB, 
@@ -58,5 +58,21 @@ impl CipherMode {
             CipherMode::CFB => false,
             _ => true
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn has_padding() {
+        assert_eq!(CipherMode::ECB.has_padding(), true);
+        assert_eq!(CipherMode::CTR.has_padding(), false);
+        assert_eq!(CipherMode::CTR_ACPKM.has_padding(), false);
+        assert_eq!(CipherMode::OFB.has_padding(), false);
+        assert_eq!(CipherMode::CBC.has_padding(), true);
+        assert_eq!(CipherMode::CFB.has_padding(), false);
+        assert_eq!(CipherMode::MAC.has_padding(), true);
     }
 }

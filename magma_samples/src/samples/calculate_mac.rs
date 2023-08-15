@@ -1,6 +1,6 @@
 /// Message Authentication Code (MAC) calculation
 pub fn sample_calculate_mac() {
-    use cipher_magma::{mac, Magma};
+    use cipher_magma::{mac, CipherMode, MagmaStream};
 
     let key: [u32; 8] = [
         0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb,
@@ -15,7 +15,7 @@ pub fn sample_calculate_mac() {
     ];
     println!("Message:\n{:02x?}\n", message);
 
-    let mut magma = Magma::with_key(key);
+    let mut magma = MagmaStream::new(key, CipherMode::MAC);
     let mac = mac::calculate(&mut magma, &message);
     println!("Calculated MAC:\n{:x}\n", mac);
     assert_eq!(mac, 0x154e7210);
@@ -24,7 +24,7 @@ pub fn sample_calculate_mac() {
 /// Message Authentication Code (MAC)
 /// Updating context with data chunks and finalizing result
 pub fn sample_calculate_mac_data_chunks() {
-    use cipher_magma::{mac, Magma};
+    use cipher_magma::{mac, CipherMode, MagmaStream};
 
     let key: [u8; 32] = [
         0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
@@ -32,7 +32,6 @@ pub fn sample_calculate_mac_data_chunks() {
         0xfe, 0xff,
     ];
     println!("Key:\n{:x?}\n", key);
-    let mut magma = Magma::with_key(key);
 
     let message = [
         0x92, 0xde, 0xf0, 0x6b, 0x3c, 0x13, 0x0a, 0x59, 0xdb, 0x54, 0xc7, 0x04, 0xf8, 0x18, 0x9d,
@@ -40,6 +39,8 @@ pub fn sample_calculate_mac_data_chunks() {
         0x7e, 0x41,
     ];
     println!("Message:\n{:02x?}\n", message);
+
+    let mut magma = MagmaStream::new(key, CipherMode::MAC);
 
     // update the context
     for chunk in message.chunks(8) {

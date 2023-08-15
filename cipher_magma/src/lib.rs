@@ -14,13 +14,20 @@
 //! * **CFB** - Cipher Feedback Mode
 //! * **MAC** - Message Authentication Code Generation Mode
 
-pub mod magma;
+pub mod core;
+pub mod stream;
 
-// re-export the magma core
-pub use magma::Magma;
+// re-export the core block-ciphering operations
+pub use crate::core::magma::Magma;
+
+// re-export constants
+pub use crate::core::constants;
+
+// re-export the stream ciphering operations
+pub use stream::magma_stream::MagmaStream;
 
 // re-export the CipherOperation
-pub use magma::cipher_operation::CipherOperation;
+pub use stream::cipher_operation::CipherOperation;
 
 // re-export the cipher modes
-pub use magma::cipher_mode::{CipherMode, ecb, ctr, ctr_acpkm, ofb, cbc, cfb, mac};
+pub use stream::cipher_mode::{CipherMode, ecb, ctr, ctr_acpkm, ofb, cbc, cfb, mac};

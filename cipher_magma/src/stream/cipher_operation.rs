@@ -1,5 +1,5 @@
 //! Cipher operation
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum CipherOperation {
     /// Encrypting operation
     Encrypt,
