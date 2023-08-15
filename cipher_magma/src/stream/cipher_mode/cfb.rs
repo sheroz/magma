@@ -15,7 +15,7 @@ pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
     magma.ensure_iv_not_empty();
 
-    magma.update_context(&CipherOperation::Encrypt, &CipherMode::CFB);
+    magma.update_context(CipherOperation::Encrypt, CipherMode::CFB);
     let mut register_r = match &magma.context.feedback.vector {
         Some(vector) => vector.clone(),
         None => VecDeque::from(magma.context.iv.clone())
@@ -52,7 +52,7 @@ pub fn decrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
     magma.ensure_iv_not_empty();
 
-    magma.update_context(&CipherOperation::Decrypt, &CipherMode::CFB);
+    magma.update_context(CipherOperation::Decrypt, CipherMode::CFB);
     let mut register_r = match &magma.context.feedback.vector {
         Some(vector) => vector.clone(),
         None => VecDeque::from(magma.context.iv.clone())

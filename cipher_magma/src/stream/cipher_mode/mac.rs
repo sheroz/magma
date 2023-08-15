@@ -14,7 +14,7 @@ use crate::core::utils;
 /// Page 26, Section 5.6
 pub fn calculate(magma: &mut MagmaStream, msg_buf: &[u8]) -> u32 {
     magma.reset_feedback();
-    magma.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
+    magma.update_context(CipherOperation::MessageAuthentication, CipherMode::MAC);
 
     update(magma, msg_buf);
     finalize(magma)
@@ -30,7 +30,7 @@ pub fn calculate(magma: &mut MagmaStream, msg_buf: &[u8]) -> u32 {
 ///
 /// Page 26, Section 5.6
 pub fn update(magma: &mut MagmaStream, msg_buf: &[u8]) {
-    magma.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
+    magma.update_context(CipherOperation::MessageAuthentication, CipherMode::MAC);
 
     let mut feedback_chained = magma.context.feedback.block.is_some();
     let mut feedback = if feedback_chained {
@@ -81,7 +81,7 @@ pub fn update(magma: &mut MagmaStream, msg_buf: &[u8]) {
 ///
 /// Page 26, Section 5.6
 pub fn finalize(magma: &mut MagmaStream) -> u32 {
-    magma.update_context(&CipherOperation::MessageAuthentication, &CipherMode::MAC);
+    magma.update_context(CipherOperation::MessageAuthentication, CipherMode::MAC);
 
     let (k1, k2) = generate_cmac_subkeys(magma);
     let k_n = if magma.context.padded { k2 } else { k1 };

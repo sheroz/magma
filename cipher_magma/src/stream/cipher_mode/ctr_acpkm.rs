@@ -11,7 +11,7 @@ use crate::core::constants::*;
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
 pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
-    magma.update_context(&CipherOperation::Encrypt, &CipherMode::CTR_ACPKM);
+    magma.update_context(CipherOperation::Encrypt, CipherMode::CTR_ACPKM);
 
     cipher_ctr_acpkm(magma, buf)
 }
@@ -24,7 +24,7 @@ pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 /// 
 /// [P 1323565.1.017— 2018](https://standartgost.ru/g/%D0%A0_1323565.1.017-2018)
 pub fn decrypt(magma_stream: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
-    magma_stream.update_context(&CipherOperation::Decrypt, &CipherMode::CTR_ACPKM);
+    magma_stream.update_context(CipherOperation::Decrypt, CipherMode::CTR_ACPKM);
 
     cipher_ctr_acpkm(magma_stream, buf)
 }

@@ -11,7 +11,7 @@ use crate::{MagmaStream, CipherOperation, CipherMode};
 /// 
 /// Page 16, Section 5.3
 pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
-    magma.update_context(&CipherOperation::Encrypt, &CipherMode::OFB);
+    magma.update_context(CipherOperation::Encrypt, CipherMode::OFB);
     cipher_ofb(magma, buf)
 }
 
@@ -23,7 +23,7 @@ pub fn encrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 /// 
 /// Page 16, Section 5.3
 pub fn decrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
-    magma.update_context(&CipherOperation::Decrypt, &CipherMode::OFB);
+    magma.update_context(CipherOperation::Decrypt, CipherMode::OFB);
     cipher_ofb(magma, buf)
 }
 

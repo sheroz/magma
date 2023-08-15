@@ -165,14 +165,14 @@ impl MagmaStream {
     // check and update cipher context
     pub(crate) fn update_context(
         &mut self,
-        cipher_operation: &CipherOperation,
-        cipher_mode: &CipherMode,
+        cipher_operation: CipherOperation,
+        cipher_mode: CipherMode,
     ) {
         if self.context.operation.as_ref() != Some(&cipher_operation)
-            || self.context.mode != *cipher_mode
+            || self.context.mode != cipher_mode
         {
-            self.context.operation = Some(cipher_operation.clone());
-            self.context.mode = cipher_mode.clone();
+            self.context.operation = Some(cipher_operation);
+            self.context.mode = cipher_mode;
             self.reset_feedback();
         }
     }
@@ -204,7 +204,7 @@ impl MagmaStream {
         let cipher_mode = self.context.mode;
 
         // check and update feedback state
-        self.update_context(&CipherOperation::Encrypt, &cipher_mode);
+        self.update_context(CipherOperation::Encrypt, cipher_mode);
 
         match cipher_mode {
             CipherMode::ECB => ecb::encrypt(self, buf),
@@ -230,7 +230,7 @@ impl MagmaStream {
         let cipher_mode = self.context.mode;
 
         // check and update feedback state
-        self.update_context(&CipherOperation::Decrypt, &cipher_mode);
+        self.update_context(CipherOperation::Decrypt, cipher_mode);
 
         match cipher_mode {
             CipherMode::ECB => ecb::decrypt(self, buf),

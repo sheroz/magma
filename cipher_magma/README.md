@@ -56,19 +56,16 @@ let decrypted = magma.decrypt(encrypted);
 println!("Decrypted:\n{:x}", decrypted);
 
 assert_eq!(decrypted, source);
-
 ```
 
 ### Text encryption sample: [encrypt_text.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/encrypt_text.rs)
 
 ```rust
-use cipher_magma::{CipherMode, CipherOperation, Magma};
-
-let cipher_mode = CipherMode::CFB;
+use cipher_magma::{CipherMode, MagmaStream};
 
 let key = [0xab; 32];
 println!("Key:\n{:x?}\n", key);
-let mut magma = Magma::with_key(key);
+let mut magma = MagmaStream::new(key, CipherMode::CFB);
 
 let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
     Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -78,12 +75,12 @@ let source = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
 
 println!("Source:\n{}\n", String::from_utf8(source.to_vec()).unwrap());
 
-let encrypted = magma.cipher(source, &CipherOperation::Encrypt, &cipher_mode);
+let encrypted = magma.encrypt(source);
 println!("Encrypted:\n{:02x?}\n", encrypted);
 
-let mut decrypted = magma.cipher(&encrypted, &CipherOperation::Decrypt, &cipher_mode);
+let mut decrypted = magma.decrypt(&encrypted);
 
-if cipher_mode.has_padding() {
+if magma.get_mode().has_padding() {
     // remove padding bytes
     decrypted.truncate(source.len());
 }
@@ -95,7 +92,7 @@ println!("Decrypted:\n{}\n", String::from_utf8(decrypted).unwrap());
 ### Message Authentication Code (MAC) sample: [calculate_mac.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/calculate_mac.rs)
 
 ```rust
-use cipher_magma::{mac, Magma};
+use cipher_magma::{mac, CipherMode, MagmaStream};
 
 let key: [u8; 32] = [
     0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
@@ -103,7 +100,6 @@ let key: [u8; 32] = [
     0xfe, 0xff,
 ];
 println!("Key:\n{:x?}\n", key);
-let mut magma = Magma::with_key(key);
 
 let message = [
     0x92, 0xde, 0xf0, 0x6b, 0x3c, 0x13, 0x0a, 0x59, 0xdb, 0x54, 0xc7, 0x04, 0xf8, 0x18, 0x9d,
@@ -111,6 +107,8 @@ let message = [
     0x7e, 0x41,
 ];
 println!("Message:\n{:02x?}\n", message);
+
+let mut magma = MagmaStream::new(key, CipherMode::MAC);
 
 // update the context
 for chunk in message.chunks(8) {
@@ -127,29 +125,29 @@ assert_eq!(mac, 0x154e7210);
 ### File encryption sample: [encrypt_file.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/samples/encrypt_file.rs)
 
 ```rust
-use cipher_magma::{CipherMode, CipherOperation, Magma};
+use cipher_magma::{CipherMode, MagmaStream};
+use std::env;
+use std::fs::File;
 use std::io::{Read, Seek, Write};
 
-let cipher_mode = CipherMode::CBC;
-
 let key = [0xab; 32];
-let mut magma = Magma::with_key(key);
+let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
-// opening file
+// opening source file
 let source_filename = "README.md";
 println!("Opening source file: {}", source_filename);
 
-let mut source_file = std::fs::File::open(source_filename).expect("Could not open file.");
+let mut source_file = File::open(source_filename).expect("Could not open file.");
 let source_len = source_file.metadata().unwrap().len();
 
-let temp_dir = std::env::temp_dir();
+let temp_dir = env::temp_dir();
 
 // creating file for encrypted data
 let encrypted_filename = format!("{}.encrypted", source_filename);
 let encrypted_filepath = temp_dir.join(encrypted_filename);
 println!("Creating encrypted file: {:?}", encrypted_filepath);
 
-let mut encrypted_file = std::fs::File::options()
+let mut encrypted_file = File::options()
     .write(true)
     .read(true)
     .create(true)
@@ -170,12 +168,13 @@ loop {
         break;
     }
 
-    let ciphertext = magma.cipher(&buf[0..read_count], &CipherOperation::Encrypt, &cipher_mode);
+    let ciphertext = magma.encrypt(&buf[0..read_count]);
 
     encrypted_file
         .write_all(&ciphertext)
         .expect("Could not write into encrypted file");
 }
+
 encrypted_file
     .flush()
     .expect("Could not flush the encrypted file");
@@ -185,10 +184,10 @@ println!("Encryption completed.");
 let decrypted_filename = format!("{}.decrypted", source_filename);
 let decrypted_filepath = temp_dir.join(decrypted_filename);
 
-println!("Creating decrypted file: {:?}", decrypted_filepath);
+println!("Creating file for decrypted data: {:?}", decrypted_filepath);
 
 let mut decrypted_file =
-    std::fs::File::create(decrypted_filepath).expect("Could not create decrypted file.");
+    File::create(decrypted_filepath).expect("Could not create decrypted file.");
 
 println!("Decrypting ...");
 
@@ -206,17 +205,18 @@ loop {
         break;
     }
 
-    let plaintext = magma.cipher(&buf[0..read_count], &CipherOperation::Decrypt, &cipher_mode);
+    let plaintext = magma.decrypt(&buf[0..read_count]);
 
     decrypted_file
         .write_all(&plaintext)
         .expect("Could not write into decrypted file");
 }
+
 decrypted_file
     .flush()
     .expect("Could not flush the decrypted file");
 
-if cipher_mode.has_padding() {
+if magma.get_mode().has_padding() {
     // remove padding bytes
     decrypted_file
         .set_len(source_len)
