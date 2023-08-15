@@ -5,8 +5,7 @@ pub fn sample_encrypt_file() {
 
     let key = [0xab; 32];
 
-    let cipher_mode = CipherMode::CBC;
-    let mut magma_mode = MagmaMode::with_key_mode(key, cipher_mode.clone());
+    let mut magma = MagmaMode::new(key, CipherMode::CBC);
 
     // opening file
     let source_filename = "README.md";
@@ -43,7 +42,7 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let ciphertext = magma_mode.encrypt(&buf[0..read_count]);
+        let ciphertext = magma.encrypt(&buf[0..read_count]);
 
         encrypted_file
             .write_all(&ciphertext)
@@ -79,7 +78,7 @@ pub fn sample_encrypt_file() {
             break;
         }
 
-        let plaintext = magma_mode.decrypt(&buf[0..read_count]);
+        let plaintext = magma.decrypt(&buf[0..read_count]);
 
         decrypted_file
             .write_all(&plaintext)
@@ -89,7 +88,7 @@ pub fn sample_encrypt_file() {
         .flush()
         .expect("Could not flush the decrypted file");
 
-    if cipher_mode.has_padding() {
+    if magma.get_mode().has_padding() {
         // remove padding bytes
         decrypted_file
             .set_len(source_len)

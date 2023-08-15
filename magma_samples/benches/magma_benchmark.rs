@@ -13,7 +13,7 @@ fn magma_block_benchmark(c: &mut Criterion) {
 
 fn magma_buffer_benchmark(c: &mut Criterion) {
     let source_buffer = [0_u8; 4096];
-    let mut magma = MagmaMode::new();
+    let mut magma = MagmaMode::new([0;8], CipherMode::CBC);
     magma.set_mode(CipherMode::ECB);
     c.bench_function("encrypt", |bencher| {
         bencher.iter(|| magma.encrypt(&source_buffer))
