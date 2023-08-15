@@ -185,12 +185,12 @@ impl MagmaMode {
     /// * `cipher_mode` - reference to `CipherMode`
     pub fn encrypt(&mut self, buf: &[u8]) -> Vec<u8> {
 
-        let cipher_mode = self.context.mode.clone();
+        let cipher_mode = self.get_mode();
 
         // check and update feedback state
         self.update_context(&CipherOperation::Encrypt, &cipher_mode);
 
-        match &cipher_mode {
+        match cipher_mode {
             CipherMode::ECB => ecb::encrypt(self, buf),
             CipherMode::CTR => ctr::encrypt(self, buf),
             CipherMode::CTR_ACPKM => ctr_acpkm::encrypt(self, buf),
@@ -211,12 +211,12 @@ impl MagmaMode {
     /// * `cipher_mode` - reference to `CipherMode`
     pub fn decrypt(&mut self, buf: &[u8]) -> Vec<u8> {
 
-        let cipher_mode = self.context.mode.clone();
+        let cipher_mode = self.get_mode();
 
         // check and update feedback state
         self.update_context(&CipherOperation::Decrypt, &cipher_mode);
 
-        match &cipher_mode {
+        match cipher_mode {
             CipherMode::ECB => ecb::decrypt(self, buf),
             CipherMode::CTR => ctr::decrypt(self, buf),
             CipherMode::CTR_ACPKM => ctr_acpkm::decrypt(self, buf),
