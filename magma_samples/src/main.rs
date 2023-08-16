@@ -1,28 +1,33 @@
-mod samples;
-use samples::encrypt_block::*;
-use samples::encrypt_text::*;
-use samples::encrypt_large_buffer::*;
-use samples::calculate_mac::*;
-use samples::encrypt_file::*;
+mod encrypt_block;
+mod encrypt_text;
+mod encrypt_large_buffer;
+mod encrypt_file;
+mod calculate_mac;
+
+use encrypt_block::*;
+use encrypt_text::*;
+use encrypt_large_buffer::*;
+use calculate_mac::*;
+use encrypt_file::*;
 
 fn main() {
     println!("\n***\n\nBlock encryption\n");
-    sample_encrypt_block();
+    encrypt_block();
 
     println!("\n***\n\nText encryption\n");
-    sample_encrypt_text();
+    encrypt_text();
 
     println!("\n***\n\nEncrypting of large buffer in chunks\n");
-    sample_encrypt_large_buffer();
+    encrypt_buffer();
 
     println!("\n***\n\nMessage Authentication Code (MAC) calculation\n");
-    sample_calculate_mac();
+    calculate_mac();
 
     println!("\n***\n\nMessage Authentication Code (MAC) calculation in data chunks\n");
-    sample_calculate_mac_data_chunks();
+    calculate_mac_data_chunks();
 
     println!("\n***\n\nFile encryption\n");
-    sample_encrypt_file();
+    encrypt_file();
 }
 
 #[cfg(test)]
@@ -35,27 +40,27 @@ mod tests {
     }
 
     #[test]
-    fn sample_encrypt_block_test() {
-        sample_encrypt_block();
+    fn encrypt_block_test() {
+        encrypt_block();
     }
 
     #[test]
-    fn sample_encrypt_text_test() {
-        sample_encrypt_text();
+    fn encrypt_text_test() {
+        encrypt_text();
+    }
+ 
+    #[test]
+    fn encrypt_large_buffer_test() {
+        encrypt_buffer();
     }
 
     #[test]
-    fn sample_encrypt_large_buffer_test() {
-        sample_encrypt_large_buffer();
+    fn calculate_mac_test() {
+        calculate_mac();
     }
 
     #[test]
-    fn sample_calculate_mac_test() {
-        sample_calculate_mac();
-    }
-
-    #[test]
-    fn sample_calculate_mac_update_test() {
-        sample_calculate_mac_data_chunks();
+    fn calculate_mac_update_test() {
+        calculate_mac_data_chunks();
     }
 }

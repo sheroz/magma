@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 cipher_magma = { path = "../cipher_magma" }
+image = "0.24"
 
 [dev-dependencies]
 criterion = "0.5"

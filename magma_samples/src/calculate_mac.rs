@@ -1,5 +1,5 @@
 /// Message Authentication Code (MAC) calculation
-pub fn sample_calculate_mac() {
+pub fn calculate_mac() {
     use cipher_magma::{mac, CipherMode, MagmaStream};
 
     let key: [u32; 8] = [
@@ -23,7 +23,7 @@ pub fn sample_calculate_mac() {
 
 /// Message Authentication Code (MAC)
 /// Updating context with data chunks and finalizing result
-pub fn sample_calculate_mac_data_chunks() {
+pub fn calculate_mac_data_chunks() {
     use cipher_magma::{mac, CipherMode, MagmaStream};
 
     let key: [u8; 32] = [

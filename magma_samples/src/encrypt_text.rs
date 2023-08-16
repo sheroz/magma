@@ -1,5 +1,5 @@
 /// Text encryption sample
-pub fn sample_encrypt_text() {
+pub fn encrypt_text() {
     use cipher_magma::{CipherMode, MagmaStream};
 
     let key = [0xab; 32];

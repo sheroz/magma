@@ -1,6 +1,8 @@
+use std::path::Path;
+
 /// File encryption sample
-pub fn sample_encrypt_file() {
-    use cipher_magma::{CipherMode, MagmaStream};
+pub fn encrypt_file() {
+    use cipher_magma::{CipherMode,MagmaStream};
     use std::env;
     use std::fs::File;
     use std::io::{Read, Seek, Write};
@@ -8,18 +10,17 @@ pub fn sample_encrypt_file() {
     let key = [0xab; 32];
     let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
-    // opening source file
-    let source_filename = "README.md";
-    println!("Opening source file: {}", source_filename);
+    let source_filepath = Path::new("magma_samples/src/sample.md");
+    println!("Opening source file: {:?}", source_filepath);
 
-    let mut source_file = File::open(source_filename).expect("Could not open file.");
+    let mut source_file = File::open(source_filepath).expect("Could not open file.");
     let source_len = source_file.metadata().unwrap().len();
 
+    let filename = source_filepath.file_name().unwrap().to_str().unwrap();
     let temp_dir = env::temp_dir();
 
     // creating file for encrypted data
-    let encrypted_filename = format!("{}.encrypted", source_filename);
-    let encrypted_filepath = temp_dir.join(encrypted_filename);
+    let encrypted_filepath = temp_dir.join(format!("{}.encrypted", filename));
     println!("Creating encrypted file: {:?}", encrypted_filepath);
 
     let mut encrypted_file = File::options()
@@ -56,8 +57,7 @@ pub fn sample_encrypt_file() {
 
     println!("Encryption completed.");
 
-    let decrypted_filename = format!("{}.decrypted", source_filename);
-    let decrypted_filepath = temp_dir.join(decrypted_filename);
+    let decrypted_filepath = temp_dir.join(format!("decrypted.{}", filename));
 
     println!("Creating file for decrypted data: {:?}", decrypted_filepath);
 
@@ -91,11 +91,11 @@ pub fn sample_encrypt_file() {
         .flush()
         .expect("Could not flush the decrypted file");
 
+    // remove padding bytes
     if magma.get_mode().has_padding() {
-        // remove padding bytes
-        decrypted_file
-            .set_len(source_len)
-            .expect("Could not remove padding bytes from decrypted file");
+    decrypted_file
+        .set_len(source_len)
+        .expect("Could not remove padding bytes from decrypted file");
     }
 
     println!("Decryption completed.");
