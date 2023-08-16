@@ -10,10 +10,10 @@ pub fn encrypt_file() {
     let key = [0xab; 32];
     let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
-    let source_filepath = Path::new("magma_samples/src/sample.md");
+    let source_filepath = Path::new("README.md");
     println!("Opening source file: {:?}", source_filepath);
 
-    let mut source_file = File::open(source_filepath).expect("Could not open file.");
+    let mut source_file = File::open(source_filepath).expect("Could not open the source file.");
     let source_len = source_file.metadata().unwrap().len();
 
     let filename = source_filepath.file_name().unwrap().to_str().unwrap();
