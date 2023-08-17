@@ -1,7 +1,6 @@
 /// File encryption sample
 pub fn encrypt_file() {
     use cipher_magma::{CipherMode, MagmaStream};
-    use std::env;
     use std::fs::File;
     use std::io::{Read, Seek, Write};
     use std::path::PathBuf;
@@ -11,7 +10,6 @@ pub fn encrypt_file() {
     // sample files are located in the /tests directory of the package root (magma_samples)
     let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
 
-    // let target_dir = env::temp_dir();
     // target directory is /tests/out of the package root (magma_samples)
     let target_dir = source_dir.join("out");
 
