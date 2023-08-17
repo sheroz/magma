@@ -1,11 +1,10 @@
-use std::path::Path;
-
 /// File encryption sample
 pub fn encrypt_file() {
-    use cipher_magma::{CipherMode,MagmaStream};
+    use cipher_magma::{CipherMode, MagmaStream};
     use std::env;
     use std::fs::File;
     use std::io::{Read, Seek, Write};
+    use std::path::Path;
 
     let key = [0xab; 32];
     let mut magma = MagmaStream::new(key, CipherMode::CBC);
@@ -93,9 +92,9 @@ pub fn encrypt_file() {
 
     // remove padding bytes
     if magma.get_mode().has_padding() {
-    decrypted_file
-        .set_len(source_len)
-        .expect("Could not remove padding bytes from decrypted file");
+        decrypted_file
+            .set_len(source_len)
+            .expect("Could not remove padding bytes from decrypted file");
     }
 
     println!("Decryption completed.");
