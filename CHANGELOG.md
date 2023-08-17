@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.8.1 (2023-08-17)
+
+- Added bitmap encryption sample
+
 ## 0.8.0 (2023-08-15)
 
 ### Breaking Change

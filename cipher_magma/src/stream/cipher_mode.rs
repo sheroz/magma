@@ -61,6 +61,20 @@ impl CipherMode {
     }
 }
 
+impl ToString for CipherMode {
+    fn to_string(&self) -> String {
+        match *self {
+            CipherMode::ECB => "ECB".to_string(),
+            CipherMode::CTR => "CTR".to_string(),
+            CipherMode::CTR_ACPKM => "CTR_ACPKM".to_string(),
+            CipherMode::OFB => "OFB".to_string(),
+            CipherMode::CBC => "CBC".to_string(),
+            CipherMode::CFB => "CFB".to_string(),
+            CipherMode::MAC => "MAC".to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,4 +89,15 @@ mod tests {
         assert_eq!(CipherMode::CFB.has_padding(), false);
         assert_eq!(CipherMode::MAC.has_padding(), true);
     }
+    #[test]
+    fn to_string() {
+        assert_eq!(CipherMode::ECB.to_string(), "ECB");
+        assert_eq!(CipherMode::CTR.to_string(), "CTR");
+        assert_eq!(CipherMode::CTR_ACPKM.to_string(), "CTR_ACPKM");
+        assert_eq!(CipherMode::OFB.to_string(), "OFB");
+        assert_eq!(CipherMode::CBC.to_string(), "CBC");
+        assert_eq!(CipherMode::CFB.to_string(), "CFB");
+        assert_eq!(CipherMode::MAC.to_string(), "MAC");
+    }
+
 }

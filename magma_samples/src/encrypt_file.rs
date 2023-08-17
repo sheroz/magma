@@ -1,25 +1,28 @@
 /// File encryption sample
-pub fn sample_encrypt_file() {
+pub fn encrypt_file() {
     use cipher_magma::{CipherMode, MagmaStream};
     use std::env;
     use std::fs::File;
     use std::io::{Read, Seek, Write};
+    use std::path::PathBuf;
 
-    let key = [0xab; 32];
-    let mut magma = MagmaStream::new(key, CipherMode::CBC);
+    let filename = "sample.md";
 
-    // opening source file
-    let source_filename = "README.md";
-    println!("Opening source file: {}", source_filename);
+    // sample files are located in the /tests directory of the package root (magma_samples)
+    let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
 
-    let mut source_file = File::open(source_filename).expect("Could not open file.");
+    // let target_dir = env::temp_dir();
+    // target directory is /tests/out of the package root (magma_samples)
+    let target_dir = source_dir.join("out");
+
+    let source_filepath = source_dir.join(filename);
+    println!("Opening source file: {:?}", source_filepath);
+
+    let mut source_file = File::open(&source_filepath).expect("Could not open the source file.");
     let source_len = source_file.metadata().unwrap().len();
 
-    let temp_dir = env::temp_dir();
-
     // creating file for encrypted data
-    let encrypted_filename = format!("{}.encrypted", source_filename);
-    let encrypted_filepath = temp_dir.join(encrypted_filename);
+    let encrypted_filepath = target_dir.join(format!("{}.encrypted", filename));
     println!("Creating encrypted file: {:?}", encrypted_filepath);
 
     let mut encrypted_file = File::options()
@@ -33,6 +36,9 @@ pub fn sample_encrypt_file() {
 
     // ensure buf size % 8 bytes
     let mut buf = [0u8; 1024];
+
+    let key = [0xab; 32];
+    let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
     loop {
         let read_count = source_file
@@ -56,8 +62,7 @@ pub fn sample_encrypt_file() {
 
     println!("Encryption completed.");
 
-    let decrypted_filename = format!("{}.decrypted", source_filename);
-    let decrypted_filepath = temp_dir.join(decrypted_filename);
+    let decrypted_filepath = target_dir.join(format!("decrypted.{}", filename));
 
     println!("Creating file for decrypted data: {:?}", decrypted_filepath);
 
@@ -91,8 +96,8 @@ pub fn sample_encrypt_file() {
         .flush()
         .expect("Could not flush the decrypted file");
 
+    // remove padding bytes
     if magma.get_mode().has_padding() {
-        // remove padding bytes
         decrypted_file
             .set_len(source_len)
             .expect("Could not remove padding bytes from decrypted file");

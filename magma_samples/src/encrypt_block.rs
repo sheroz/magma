@@ -1,5 +1,5 @@
 /// Block encryption sample
-pub fn sample_encrypt_block() {
+pub fn encrypt_block() {
     use cipher_magma::Magma;
 
     let key: [u32; 8] = [

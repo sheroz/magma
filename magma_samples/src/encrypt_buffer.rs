@@ -1,5 +1,5 @@
-/// Sample of encryption of large data in chunks
-pub fn sample_encrypt_large_buffer() {
+/// Sample of buffer encryption in chunks
+pub fn encrypt_buffer() {
     use cipher_magma::{CipherMode, MagmaStream};
 
     const BUF_SIZE: usize = 128;
@@ -13,12 +13,12 @@ pub fn sample_encrypt_large_buffer() {
         Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. \
         Quisque iaculis est et est volutpat posuere.\n";
 
-    // building data containing 5000x of txt
+    // build the source buffer containing 5000x of txt
     let repeat_count = 5000;
     let mut source = Vec::<u8>::with_capacity(txt.len() * repeat_count);
     (0..repeat_count).for_each(|_| source.extend_from_slice(txt));
 
-    println!("Source len:{}", source.len());
+    println!("Source buffer len:{}", source.len());
 
     let mut encrypted = Vec::<u8>::with_capacity(source.len());
     let source_chunks = source.chunks(BUF_SIZE);
