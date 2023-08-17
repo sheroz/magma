@@ -47,24 +47,24 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
 
 #### The original bitmap image: Ferris the crab
 
-[![Ferris the crab, the original image](https://github.com/sheroz/magma/tree/main/magma_samples/tests/ferris.bmp)](https://github.com/sheroz/magma/tree/main/magma_samples/tests/ferris.bmp)
+[![Ferris the crab, the original image](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/ferris.bmp)
 
 #### Encrypted bitmap in Electronic Codebook Mode (ECB) Mode
 
-[![Ferris the crab, encrypted in ECB Mode](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)
+[![Ferris the crab, encrypted in ECB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)
 
 #### Encrypted bitmap in Counter Encryption (CTR) Mode
 
-[![Ferris the crab, encrypted in CTR Mode](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_ctr.ferris.bmp)](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_ctr.ferris.bmp)
+[![Ferris the crab, encrypted in CTR Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ctr.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ctr.ferris.bmp)
 
 #### Encrypted bitmap in Output Feedback (OFB) Mode
 
-[![Ferris the crab, encrypted in OFB Mode](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_ofb.ferris.bmp)](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_ofb.ferris.bmp)
+[![Ferris the crab, encrypted in OFB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ofb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ofb.ferris.bmp)
 
 #### Encrypted bitmap in Cipher Block Chaining (CBC) Mode
 
-[![Ferris the crab, encrypted in CBC Mode](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_cbc.ferris.bmp)](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_cbc.ferris.bmp)
+[![Ferris the crab, encrypted in CBC Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cbc.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cbc.ferris.bmp)
 
 #### Encrypted bitmap in Cipher Feedback (CFB) Mode
 
-[![Ferris the crab, encrypted in CFB Mode](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)](https://github.com/sheroz/magma/tree/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)
+[![Ferris the crab, encrypted in CFB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)
