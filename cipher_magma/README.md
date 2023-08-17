@@ -55,7 +55,7 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
 
 [![Ferris the crab, encrypted in ECB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)
 
-Please note that ECB mode has weaknesses and leaks information about the plaintext. ECB mode [is not recommended](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#ECB-weakness) for use in cryptographic protocols.
+Please note that ECB has weaknesses. It does not hide data patterns well and leaks information about the plaintext. ECB mode [is not recommended](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#ECB-weakness) for use in cryptographic protocols.
 
 ---
 
