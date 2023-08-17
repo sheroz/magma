@@ -8,6 +8,11 @@ pub fn encrypt_bmp(filename: &str, cipher_mode: CipherMode) {
     
     // sample files are located in the /tests directory of the package root (magma_samples)
     let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+
+    // let target_dir = env::temp_dir();
+    // target directory is /tests/out of the package root (magma_samples)
+    let target_dir = source_dir.join("out");
+
     let source_filepath = source_dir.join(filename);
 
     println!("Opening the image file: {:?} ...", source_filepath);
@@ -30,10 +35,10 @@ pub fn encrypt_bmp(filename: &str, cipher_mode: CipherMode) {
 
     let enc_filename = format!(
         "encrypted_{}.{}",
-        format!("{:?}", magma.get_mode()).to_lowercase(),
+        magma.get_mode().to_string().to_lowercase(),
         filename
     );
-    let enc_filepath = env::temp_dir().join(enc_filename);
+    let enc_filepath = target_dir.join(enc_filename);
 
     println!("Saving the encrypted image as: {:?}", enc_filepath);
     image::save_buffer(
