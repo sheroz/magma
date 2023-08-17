@@ -7,6 +7,8 @@ pub fn encrypt_file() {
     use std::path::PathBuf;
 
     let filename = "sample.md";
+
+    // sample files are located in the /tests directory of the package root (magma_samples)
     let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source_filepath = source_dir.join(filename);
     println!("Opening source file: {:?}", source_filepath);

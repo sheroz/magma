@@ -6,6 +6,7 @@ use std::path::PathBuf;
 /// Bitmap image encryption sample
 pub fn encrypt_bmp(filename: &str, cipher_mode: CipherMode) {
     
+    // sample files are located in the /tests directory of the package root (magma_samples)
     let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source_filepath = source_dir.join(filename);
 
