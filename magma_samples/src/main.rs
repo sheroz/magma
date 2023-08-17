@@ -6,6 +6,7 @@ mod encrypt_file;
 mod encrypt_text;
 
 fn main() {
+
     println!("\n***\n\nBlock encryption\n");
     encrypt_block::encrypt_block();
 
@@ -25,12 +26,12 @@ fn main() {
     encrypt_file::encrypt_file();
 
     println!("\n***\n\nBitmap image encryption\n");
-    let source = std::path::Path::new("ferris.bmp");
-    encrypt_bmp::encrypt_bmp(source, cipher_magma::CipherMode::ECB);
-    encrypt_bmp::encrypt_bmp(source, cipher_magma::CipherMode::CBC);
-    encrypt_bmp::encrypt_bmp(source, cipher_magma::CipherMode::OFB);
-    encrypt_bmp::encrypt_bmp(source, cipher_magma::CipherMode::CTR);
-    encrypt_bmp::encrypt_bmp(source, cipher_magma::CipherMode::CFB);
+    let bmp_filename = "ferris.bmp";
+    encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::ECB);
+    encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::CBC);
+    encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::OFB);
+    encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::CTR);
+    encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::CFB);
 }
 
 #[cfg(test)]

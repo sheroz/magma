@@ -1,11 +1,14 @@
 use cipher_magma::{CipherMode, MagmaStream};
 use image;
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
 
 /// Bitmap image encryption sample
-pub fn encrypt_bmp(source_filepath: &Path, cipher_mode: CipherMode) {
+pub fn encrypt_bmp(filename: &str, cipher_mode: CipherMode) {
     
+    let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let source_filepath = source_dir.join(filename);
+
     println!("Opening the image file: {:?} ...", source_filepath);
     let img = image::open(source_filepath).unwrap();
 
@@ -24,7 +27,6 @@ pub fn encrypt_bmp(source_filepath: &Path, cipher_mode: CipherMode) {
     let enc_buf = magma.encrypt(&buf);
     assert_eq!(buf.len(), enc_buf.len());
 
-    let filename = source_filepath.file_name().unwrap().to_str().unwrap();
     let enc_filename = format!(
         "encrypted_{}.{}",
         format!("{:?}", magma.get_mode()).to_lowercase(),

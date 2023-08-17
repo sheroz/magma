@@ -4,18 +4,16 @@ pub fn encrypt_file() {
     use std::env;
     use std::fs::File;
     use std::io::{Read, Seek, Write};
-    use std::path::Path;
+    use std::path::PathBuf;
 
-    let key = [0xab; 32];
-    let mut magma = MagmaStream::new(key, CipherMode::CBC);
-
-    let source_filepath = Path::new("README.md");
+    let filename = "sample.md";
+    let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let source_filepath = source_dir.join(filename);
     println!("Opening source file: {:?}", source_filepath);
 
-    let mut source_file = File::open(source_filepath).expect("Could not open the source file.");
+    let mut source_file = File::open(&source_filepath).expect("Could not open the source file.");
     let source_len = source_file.metadata().unwrap().len();
 
-    let filename = source_filepath.file_name().unwrap().to_str().unwrap();
     let temp_dir = env::temp_dir();
 
     // creating file for encrypted data
@@ -33,6 +31,9 @@ pub fn encrypt_file() {
 
     // ensure buf size % 8 bytes
     let mut buf = [0u8; 1024];
+
+    let key = [0xab; 32];
+    let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
     loop {
         let read_count = source_file
