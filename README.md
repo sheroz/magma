@@ -36,35 +36,47 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
 
 ### Samples
 
-- Block encryption [encrypt_block.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/encrypt_block.rs)
-- Text encryption [encrypt_text.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/encrypt_text.rs)
-- Message Authentication Code (MAC) [calculate_mac.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/calculate_mac.rs)
-- Buffer encryption [encrypt_buffer.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/encrypt_buffer.rs)
-- File encryption [encrypt_file.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/encrypt_file.rs)
-- Bitmap file encryption [encrypt_bmp.rs](https://github.com/sheroz/magma/tree/main/magma_samples/src/encrypt_bmp.rs)
+- Block encryption [encrypt_block.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_block.rs)
+- Text encryption [encrypt_text.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_text.rs)
+- Message Authentication Code (MAC) [calculate_mac.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/calculate_mac.rs)
+- Buffer encryption [encrypt_buffer.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_buffer.rs)
+- File encryption [encrypt_file.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_file.rs)
+- Bitmap file encryption [encrypt_bmp.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_bmp.rs)
 
-### Bitmap file encryption results
+## Bitmap file encryption results
 
-#### The original bitmap image: Ferris the crab
+### The original bitmap image: Ferris the crab
 
 [![Ferris the crab, the original image](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/ferris.bmp)
 
-#### Encrypted bitmap in Electronic Codebook Mode (ECB) Mode
+---
+
+### Encrypted bitmap in Electronic Codebook Mode (ECB) Mode
 
 [![Ferris the crab, encrypted in ECB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ecb.ferris.bmp)
 
-#### Encrypted bitmap in Counter Encryption (CTR) Mode
+Please note that ECB mode has weaknesses and leaks information about the plaintext. ECB mode [is not recommended](https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#ECB-weakness) for use in cryptographic protocols.
+
+---
+
+### Encrypted bitmap in Counter Encryption (CTR) Mode
 
 [![Ferris the crab, encrypted in CTR Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ctr.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ctr.ferris.bmp)
 
-#### Encrypted bitmap in Output Feedback (OFB) Mode
+---
+
+### Encrypted bitmap in Output Feedback (OFB) Mode
 
 [![Ferris the crab, encrypted in OFB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ofb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_ofb.ferris.bmp)
 
-#### Encrypted bitmap in Cipher Block Chaining (CBC) Mode
+---
+
+### Encrypted bitmap in Cipher Block Chaining (CBC) Mode
 
 [![Ferris the crab, encrypted in CBC Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cbc.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cbc.ferris.bmp)
 
-#### Encrypted bitmap in Cipher Feedback (CFB) Mode
+---
+
+### Encrypted bitmap in Cipher Feedback (CFB) Mode
 
 [![Ferris the crab, encrypted in CFB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)
