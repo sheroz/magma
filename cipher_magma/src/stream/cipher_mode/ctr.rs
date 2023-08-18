@@ -26,20 +26,38 @@ pub fn decrypt(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
     cipher_ctr(magma, buf)
 }
 
-/// Returns encrypted/decrypted result as `Vec<u8>`
+/// Returns ciphering result as `Vec<u8>`
 /// 
-/// Implements the core Counter Encryption (CTR) mode
+/// Implements the Counter Encryption (CTR) mode
 /// 
 /// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
 /// 
 /// Page 14, Section 5.2
 fn cipher_ctr(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
 
-    let iv_ctr = magma.prepare_vector_ctr();
-    let mut counter = match magma.context.feedback.block {
+    let counter = match magma.context.feedback.block {
         Some(block) => block,
         None => 0
     };
+
+    let (result, counter) = cipher_ctr_core(&magma, buf, counter);
+
+    // update the feedback state
+    magma.context.feedback.block = Some(counter);
+    result
+}
+
+/// Returns ciphering result as `Vec<u8>` and counter value as u64
+/// 
+/// Implements the core Counter Encryption (CTR) mode
+/// 
+/// [GOST R 34.13-2015](https://www.tc26.ru/standard/gost/GOST_R_3413-2015.pdf)
+/// 
+/// Page 14, Section 5.2
+pub fn cipher_ctr_core(magma: &MagmaStream, buf: &[u8], counter: u64) -> (Vec<u8>,u64)  {
+
+    let iv_ctr = magma.prepare_vector_ctr();
+    let mut counter = counter;
 
     let mut result = Vec::<u8>::with_capacity(buf.len());
 
@@ -57,10 +75,7 @@ fn cipher_ctr(magma: &mut MagmaStream, buf: &[u8]) -> Vec<u8> {
         result.extend_from_slice(&output.to_be_bytes()[..chunk.len()]);
     }
 
-    // update the feedback state
-    magma.context.feedback.block = Some(counter);
-
-    result
+    (result, counter)
 }
 
 #[cfg(test)] 

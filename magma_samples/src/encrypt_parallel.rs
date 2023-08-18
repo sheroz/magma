@@ -8,7 +8,7 @@ pub fn encrypt_buffer_parallel() {
     use cipher_magma::{CipherMode, MagmaStream};
     use rayon::prelude::*;
 
-    const CHUNK_SIZE: usize = 4096;
+    const CHUNK_SIZE: usize = 128;
 
     let key = [0xab; 32];
     let mut magma = MagmaStream::new(key, CipherMode::CTR);
@@ -20,7 +20,7 @@ pub fn encrypt_buffer_parallel() {
         Quisque iaculis est et est volutpat posuere.\n";
 
     // build the source buffer containing 50000x of txt ~ 16 MB
-    let repeat_count = 50000;
+    let repeat_count = 1;
     let mut source = Vec::<u8>::with_capacity(txt.len() * repeat_count);
     (0..repeat_count).for_each(|_| source.extend_from_slice(txt));
     println!("Source len:{}", source.len());
@@ -37,8 +37,12 @@ pub fn encrypt_buffer_parallel() {
         .par_chunks(CHUNK_SIZE)
         .enumerate()
         .for_each(|(index, chunk)| {
-            // let mut ciphertext = magma.encrypt(chunk);
-            let ciphertext = Vec::from(chunk);
+            let mut counter = (index * CHUNK_SIZE) as u64;
+            if counter > 0 {
+                counter -= 1;
+            }
+
+            let (ciphertext, _) = cipher_magma::ctr::cipher_ctr_core(&magma, chunk, counter);
             mutex.lock().unwrap().insert(index, ciphertext);
         });
 
@@ -51,8 +55,6 @@ pub fn encrypt_buffer_parallel() {
         .for_each(|index| encrypted.append(map.get_mut(index).unwrap()));
 
     println!("Encrypted len:{}", encrypted.len());
-    assert_eq!(encrypted, source);
-    return;
 
     println!("Decrypting...");
     let mut decrypted = Vec::<u8>::with_capacity(encrypted.len());
