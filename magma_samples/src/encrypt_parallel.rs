@@ -1,6 +1,8 @@
-/// Sample of buffer encryption in chunks by parallel processing
+/// Sample of buffer encryption by parallel processing
 pub fn encrypt_buffer_parallel() {
+
     use cipher_magma::{CipherMode, MagmaStream};
+    use rayon::prelude::*;
 
     const CHUNK_SIZE: usize = 4096;
 
