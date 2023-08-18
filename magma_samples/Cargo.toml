@@ -1,12 +1,13 @@
 [package]
 name = "magma_samples"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 [dependencies]
 cipher_magma = { path = "../cipher_magma" }
 image = "0.24"
 rayon = "1.7"
+tick_counter = "0.4"
 
 [dev-dependencies]
 criterion = "0.5"
