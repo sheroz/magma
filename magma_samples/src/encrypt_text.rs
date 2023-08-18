@@ -26,4 +26,15 @@ pub fn encrypt_text() {
 
     assert_eq!(decrypted, source);
     println!("Decrypted:\n{}\n", String::from_utf8(decrypted).unwrap());
+    
+    println!("Completed.");
+}
+
+#[cfg(test)] 
+mod tests {
+    use super::*;
+    #[test]
+    fn encrypt_text_test() {
+        encrypt_text();
+    }
 }

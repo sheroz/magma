@@ -40,6 +40,7 @@ Please look at [magma_samples](https://github.com/sheroz/magma/tree/main/magma_s
 - Text encryption [encrypt_text.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_text.rs)
 - Message Authentication Code (MAC) [calculate_mac.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/calculate_mac.rs)
 - Buffer encryption [encrypt_buffer.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_buffer.rs)
+- Buffer encryption by parallel processing [encrypt_buffer_parallel.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_buffer_parallel.rs)
 - File encryption [encrypt_file.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_file.rs)
 - Bitmap file encryption [encrypt_bmp.rs](https://github.com/sheroz/magma/blob/main/magma_samples/src/encrypt_bmp.rs)
 

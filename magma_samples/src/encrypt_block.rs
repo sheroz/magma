@@ -19,4 +19,14 @@ pub fn encrypt_block() {
     println!("Decrypted:\n{:x}", decrypted);
 
     assert_eq!(decrypted, source);
+    println!("Completed.");
+}
+
+#[cfg(test)] 
+mod tests {
+    use super::*;
+    #[test]
+    fn encrypt_block_test() {
+        encrypt_block();
+    }
 }
