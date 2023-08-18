@@ -17,14 +17,18 @@ pub fn calculate_mac() {
 
     let mut magma = MagmaStream::new(key, CipherMode::MAC);
     let mac = mac::calculate(&mut magma, &message);
-    println!("Calculated MAC:\n{:x}\n", mac);
+    println!("Calculated MAC:{:x}", mac);
     assert_eq!(mac, 0x154e7210);
+
+    println!("Completed.");
 }
 
 /// Message Authentication Code (MAC)
-/// Updating context with data chunks and finalizing result
-pub fn calculate_mac_data_chunks() {
+/// Updating context and finalizing result
+pub fn calculate_mac_stream() {
     use cipher_magma::{mac, CipherMode, MagmaStream};
+
+    const CHUNK_SIZE: usize = 16;
 
     let key: [u8; 32] = [
         0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
@@ -41,15 +45,33 @@ pub fn calculate_mac_data_chunks() {
     println!("Message:\n{:02x?}\n", message);
 
     let mut magma = MagmaStream::new(key, CipherMode::MAC);
+    let chunks = message.chunks(16);
+    println!("Chunk size:{}", CHUNK_SIZE);
+    println!("Chunks count:{}", chunks.clone().count());
 
-    // update the context
-    for chunk in message.chunks(8) {
+    // update the context in data chunks
+    for chunk in chunks {
         mac::update(&mut magma, &chunk);
     }
 
-    // finalize and get result
+    // finalize
     let mac = mac::finalize(&mut magma);
-    println!("Calculated MAC:\n{:x}\n", mac);
-
+    println!("Calculated MAC:{:x}", mac);
     assert_eq!(mac, 0x154e7210);
+
+    println!("Completed.");
+}
+
+#[cfg(test)] 
+mod tests {
+    use super::*;
+    #[test]
+    fn calculate_mac_test() {
+        calculate_mac();
+    }
+
+    #[test]
+    fn calculate_mac_stream_test() {
+        calculate_mac_stream();
+    }
 }

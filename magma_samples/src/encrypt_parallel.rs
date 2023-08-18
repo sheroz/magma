@@ -1,11 +1,11 @@
-/// Sample of buffer encryption in chunks
-pub fn encrypt_buffer() {
+/// Sample of buffer encryption in chunks by parallel processing
+pub fn encrypt_buffer_parallel() {
     use cipher_magma::{CipherMode, MagmaStream};
 
     const CHUNK_SIZE: usize = 4096;
 
     let key = [0xab; 32];
-    let mut magma = MagmaStream::new(key, CipherMode::CFB);
+    let mut magma = MagmaStream::new(key, CipherMode::CTR);
 
     let txt = b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
         Aenean ac sem leo. Morbi pretium neque eget felis finibus convallis. \
@@ -13,20 +13,20 @@ pub fn encrypt_buffer() {
         Phasellus vel ex nec leo pretium efficitur. Aliquam malesuada vestibulum magna. \
         Quisque iaculis est et est volutpat posuere.\n";
 
-    // build the source buffer containing 500x of txt
-    let repeat_count = 500;
+    // build the source buffer containing 50000x of txt ~ 16 MB
+    let repeat_count = 50000;
     let mut source = Vec::<u8>::with_capacity(txt.len() * repeat_count);
     (0..repeat_count).for_each(|_| source.extend_from_slice(txt));
     println!("Source len:{}", source.len());
 
-    let mut encrypted = Vec::<u8>::with_capacity(source.len());
-    println!("Chunk size:{}", CHUNK_SIZE);
     let chunks = source.chunks(CHUNK_SIZE);
+    println!("Chunk size:{}", CHUNK_SIZE);
     println!("Chunks count:{}", chunks.clone().count());
 
     println!("Encrypting...");
+    let mut encrypted = Vec::<u8>::with_capacity(source.len());
     for chunk in chunks {
-        let mut ciphertext = magma.encrypt(&chunk);
+        let mut ciphertext = magma.encrypt(chunk);
         encrypted.append(&mut ciphertext);
     }
     println!("Encrypted len:{}", encrypted.len());
@@ -55,7 +55,7 @@ pub fn encrypt_buffer() {
 mod tests {
     use super::*;
     #[test]
-    fn encrypt_buffer_test() {
-        encrypt_buffer();
+    fn encrypt_buffer_parallel_test() {
+        encrypt_buffer_parallel();
     }
 }

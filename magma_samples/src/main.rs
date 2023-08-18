@@ -3,10 +3,10 @@ mod encrypt_block;
 mod encrypt_bmp;
 mod encrypt_buffer;
 mod encrypt_file;
+mod encrypt_parallel;
 mod encrypt_text;
 
 fn main() {
-
     println!("\n***\n\nBlock encryption\n");
     encrypt_block::encrypt_block();
 
@@ -20,7 +20,7 @@ fn main() {
     calculate_mac::calculate_mac();
 
     println!("\n***\n\nMessage Authentication Code (MAC) calculation in data chunks\n");
-    calculate_mac::calculate_mac_data_chunks();
+    calculate_mac::calculate_mac_stream();
 
     println!("\n***\n\nFile encryption\n");
     encrypt_file::encrypt_file();

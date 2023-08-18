@@ -30,14 +30,13 @@ pub fn encrypt_file() {
         .open(encrypted_filepath)
         .expect("Could not create encrypted file.");
 
-    println!("Encrypting ...");
-
     // ensure buf size % 8 bytes
     let mut buf = [0u8; 1024];
 
     let key = [0xab; 32];
     let mut magma = MagmaStream::new(key, CipherMode::CBC);
 
+    println!("Encrypting ...");
     loop {
         let read_count = source_file
             .read(&mut buf)
@@ -58,8 +57,6 @@ pub fn encrypt_file() {
         .flush()
         .expect("Could not flush the encrypted file");
 
-    println!("Encryption completed.");
-
     let decrypted_filepath = target_dir.join(format!("decrypted.{}", filename));
 
     println!("Creating file for decrypted data: {:?}", decrypted_filepath);
@@ -67,13 +64,12 @@ pub fn encrypt_file() {
     let mut decrypted_file =
         File::create(decrypted_filepath).expect("Could not create decrypted file.");
 
-    println!("Decrypting ...");
-
     // rewind the file position to the begining
     encrypted_file
         .rewind()
         .expect("Could not rewind encrypted file");
 
+    println!("Decrypting ...");
     loop {
         let read_count = encrypted_file
             .read(&mut buf)
@@ -101,5 +97,5 @@ pub fn encrypt_file() {
             .expect("Could not remove padding bytes from decrypted file");
     }
 
-    println!("Decryption completed.");
+    println!("Completed.");
 }
