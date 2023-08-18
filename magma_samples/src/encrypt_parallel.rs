@@ -1,6 +1,10 @@
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
 /// Sample of buffer encryption by parallel processing
 pub fn encrypt_buffer_parallel() {
-
     use cipher_magma::{CipherMode, MagmaStream};
     use rayon::prelude::*;
 
@@ -27,11 +31,28 @@ pub fn encrypt_buffer_parallel() {
 
     println!("Encrypting...");
     let mut encrypted = Vec::<u8>::with_capacity(source.len());
-    for chunk in chunks {
-        let mut ciphertext = magma.encrypt(chunk);
-        encrypted.append(&mut ciphertext);
-    }
+
+    let mutex = Arc::new(Mutex::new(HashMap::<usize, Vec<u8>>::new()));
+    source
+        .par_chunks(CHUNK_SIZE)
+        .enumerate()
+        .for_each(|(index, chunk)| {
+            // let mut ciphertext = magma.encrypt(chunk);
+            let ciphertext = Vec::from(chunk);
+            mutex.lock().unwrap().insert(index, ciphertext);
+        });
+
+    // merge encrypted chunks
+    let mut map = mutex.lock().unwrap();
+    let mut map_keys = map.keys().map(|v| *v).collect::<Vec<_>>();
+    map_keys.sort();
+    map_keys
+        .iter()
+        .for_each(|index| encrypted.append(map.get_mut(index).unwrap()));
+
     println!("Encrypted len:{}", encrypted.len());
+    assert_eq!(encrypted, source);
+    return;
 
     println!("Decrypting...");
     let mut decrypted = Vec::<u8>::with_capacity(encrypted.len());
