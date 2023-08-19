@@ -99,3 +99,12 @@ pub fn encrypt_file() {
 
     println!("Completed.");
 }
+
+#[cfg(test)] 
+mod tests {
+    use super::*;
+    #[test]
+    fn encrypt_file_test() {
+        encrypt_file();
+    }
+}

@@ -49,3 +49,12 @@ pub fn encrypt_bmp(filename: &str, cipher_mode: CipherMode) {
 
     println!("Completed.");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn encrypt_bmp_test() {
+        encrypt_bmp("ferris.bmp", cipher_magma::CipherMode::ECB);
+    }
+}

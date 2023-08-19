@@ -16,7 +16,7 @@ fn main() {
     println!("\n***\n\nEncrypting buffer in chunks\n");
     encrypt_buffer::encrypt_buffer();
 
-    println!("\n***\n\nEncrypting buffer by parallel processing of chunks\n");
+    println!("\n***\n\nEncrypting buffer by parallel processing\n");
     encrypt_buffer_parallel::encrypt_buffer_parallel();
 
     println!("\n***\n\nMessage Authentication Code (MAC) calculation\n");
@@ -35,14 +35,4 @@ fn main() {
     encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::OFB);
     encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::CTR);
     encrypt_bmp::encrypt_bmp(bmp_filename, cipher_magma::CipherMode::CFB);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn main_test() {
-        main();
-    }
 }

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.8.3 (2023-08-19)
+
+- Updated sample for buffer encryption by parallel processing
+- Moved unit tests into sample modules
+- Updated documentation
+
 ## 0.8.2 (2023-08-19)
 
 - Added sample for buffer encryption by parallel processing
