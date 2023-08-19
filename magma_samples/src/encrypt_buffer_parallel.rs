@@ -1,7 +1,10 @@
-/// Sample of buffer encryption by parallel processing of chunks
-/// Results (MacBook Pro M1 2021):
-/// 
-/// ```text
+/// Sample of buffer encryption by parallel processing in chunks
+///
+/// Results #1
+/// MacBook Pro M1 2021
+/// MacOS Ventura 13.4, Darwin Kernel Version 22.5.0
+/// TLDR: parallel processing is ~8.3 times faster
+///
 /// Source len: 16850000
 /// Encrypting by parallel processing...
 /// Encryption, elapsed ticks: 19012211
@@ -12,7 +15,25 @@
 /// Decrypted len: 16850000
 /// Decrypted final len: 16850000
 /// Completed.
-/// ```
+///
+/// ---
+///
+/// Results #2
+/// Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz
+/// Linux 6.2.0-26-generic #26~22.04.1-Ubuntu x86_64
+/// TLDR: parallel processing is ~ 4.5 times faster
+///
+/// Source len: 16850000
+/// Encrypting by parallel processing...
+/// Encryption, elapsed ticks: 8276437589
+/// Encrypted len: 16850000
+/// Decrypting in single thread...
+/// Decryption, elapsed ticks: 37064304591
+/// Parallel processing speedup: 4.478292042008655
+/// Decrypted len: 16850000
+/// Decrypted final len: 16850000
+/// Completed.
+/// 
 pub fn encrypt_buffer_parallel() {
     use cipher_magma::{CipherMode, MagmaStream};
     use rayon::prelude::*;
@@ -38,41 +59,41 @@ pub fn encrypt_buffer_parallel() {
 
     println!("Encrypting by parallel processing...");
     let mut encrypted = Vec::<u8>::with_capacity(source.len());
-    let counter_alignment = if CHUNK_SIZE % 8 == 0 { 0 } else { 1 };
     let mutex = Arc::new(Mutex::new(HashMap::<usize, Vec<u8>>::new()));
+    let counter_size = CHUNK_SIZE / 8 + if CHUNK_SIZE % 8 == 0 { 0 } else { 1 };
     let encrypt_start = tick_counter::start();
     source
         .par_chunks(CHUNK_SIZE)
         .enumerate()
         .for_each(|(index, chunk)| {
-            let counter = counter_alignment + (index * CHUNK_SIZE / 8) as u64;
-            let (ciphertext, _counter) = cipher_magma::ctr::cipher_ctr_core(&magma, chunk, counter);
+            let counter = index * counter_size;
+            let (ciphertext, _) = cipher_magma::ctr::cipher_ctr_core(&magma, chunk, counter as u64);
             mutex.lock().unwrap().insert(index, ciphertext);
         });
 
-    // merge encrypted chunks
+    // merging encrypted chunks
     let mut map = mutex.lock().unwrap();
-    let mut map_keys = map.keys().map(|v| *v).collect::<Vec<_>>();
-    map_keys.sort();
-    map_keys
-        .iter()
-        .for_each(|index| encrypted.append(map.get_mut(index).unwrap()));
+    (0..map.len()).for_each(|index| encrypted.append(map.get_mut(&index).unwrap()));
 
-    let encrypt_ticks = tick_counter::stop() - encrypt_start;
-    println!("Encryption, elapsed ticks: {}", encrypt_ticks);
+    let encrypt_elapsed_ticks = tick_counter::stop() - encrypt_start;
+    println!("Encryption, elapsed ticks: {}", encrypt_elapsed_ticks);
+
     println!("Encrypted len: {}", encrypted.len());
 
     println!("Decrypting in single thread...");
     let mut decrypted = Vec::<u8>::with_capacity(encrypted.len());
     let encrypted_chunks = encrypted.chunks(CHUNK_SIZE);
+
     let decrypt_start = tick_counter::start();
     for chunk in encrypted_chunks {
+        // using the generic stream method to make sure of compatibility
         let mut plaintext = magma.decrypt(&chunk);
         decrypted.append(&mut plaintext);
     }
-    let decrypt_ticks = tick_counter::stop() - decrypt_start;
-    let speedup = (decrypt_ticks as f64) / (encrypt_ticks as f64);
-    println!("Decryption, elapsed ticks: {}", decrypt_ticks);
+
+    let decrypt_elapsed_ticks = tick_counter::stop() - decrypt_start;
+    let speedup = (decrypt_elapsed_ticks as f64) / (encrypt_elapsed_ticks as f64);
+    println!("Decryption, elapsed ticks: {}", decrypt_elapsed_ticks);
     println!("Parallel processing speedup: {}", speedup);
 
     println!("Decrypted len: {}", encrypted.len());
@@ -86,4 +107,13 @@ pub fn encrypt_buffer_parallel() {
     assert_eq!(decrypted, source);
 
     println!("Completed.");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn encrypt_buffer_parallel_test() {
+        encrypt_buffer_parallel();
+    }
 }
