@@ -5,6 +5,8 @@
 [![build & test](https://github.com/sheroz/magma/actions/workflows/ci.yml/badge.svg)](https://github.com/sheroz/magma/actions/workflows/ci.yml)
 [![MIT](https://img.shields.io/github/license/sheroz/cipher_magma)](https://github.com/sheroz/magma/tree/main/cipher_magma/LICENSE.txt)
 
+The brief description: [https://sheroz.com/pages/blog/rust-block-cipher-magma-gost-28147-89.html](https://sheroz.com/pages/blog/rust-block-cipher-magma-gost-28147-89.html)
+
 ## Supported Cipher Modes
 
 - **ECB** - Electronic Codebook Mode
