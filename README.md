@@ -1,4 +1,4 @@
-# Block Cipher "Magma" (GOST R 34.12-2015, former GOST 28147-89)
+# Block Cipher Magma in Rust
 
 [![crates.io](https://img.shields.io/crates/v/cipher_magma)](https://crates.io/crates/cipher_magma)
 [![docs](https://img.shields.io/docsrs/cipher_magma)](https://docs.rs/cipher_magma)
