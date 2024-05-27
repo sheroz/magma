@@ -86,6 +86,6 @@ Please note that the ECB mode has weaknesses. It does not hide data patterns wel
 
 [![Ferris the crab, encrypted in CFB Mode](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)](https://raw.githubusercontent.com/sheroz/magma/main/magma_samples/tests/out/encrypted_cfb.ferris.bmp)
 
-### Disclaimer
+## Disclaimer
 
 This project was created for research purposes and is not intended for use in production systems.
